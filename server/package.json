@@ -1,0 +1,9 @@
+{
+  "name": "devportfolio-server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  }
+}
