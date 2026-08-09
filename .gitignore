@@ -1,0 +1,19 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Production builds
+client/dist/
+dist/
+
+# Local data & environment
+.env
+.env.local
+server/logs/
+server/data/*.json
+!server/data/sampleData.js
+
+# OS files
+.DS_Store
+Thumbs.db

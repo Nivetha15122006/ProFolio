@@ -1,0 +1,16 @@
+{
+  "name": "devportfolio-workspace",
+  "version": "1.0.0",
+  "description": "Full Stack DevPortfolio Workspace",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev:server": "node server/server.js",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
