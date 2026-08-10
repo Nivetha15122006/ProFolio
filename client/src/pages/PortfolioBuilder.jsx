@@ -106,7 +106,19 @@ export default function PortfolioBuilder() {
           <h1 className="page-title">Portfolio Builder</h1>
           <p className="page-desc">Customize your personal website templates and toggle visible items in real time.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button 
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              const shareUrl = `${window.location.origin}/p/${api.auth.getCurrentUser() || 'arjun'}`;
+              navigator.clipboard.writeText(shareUrl)
+                .then(() => showToast("Shareable link copied to clipboard!"))
+                .catch(() => showToast("Failed to copy link.", "error"));
+            }}
+          >
+            Copy Link
+          </button>
           <a 
             href={`/p/${api.auth.getCurrentUser() || 'arjun'}`} 
             target="_blank" 
@@ -115,7 +127,7 @@ export default function PortfolioBuilder() {
             style={{ textDecoration: 'none' }}
           >
             <ExternalLink size={14} />
-            <span>Open Public Site</span>
+            <span>View Site</span>
           </a>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             <Save size={16} />
