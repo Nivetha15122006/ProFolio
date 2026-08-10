@@ -70,7 +70,8 @@ async function saveUser(user) {
 // Profile helper functions
 async function getProfile(username) {
   const profiles = await readJSON('profiles.json');
-  if (!profiles[username]) {
+  const matchedKey = Object.keys(profiles).find(k => k.toLowerCase() === username.toLowerCase());
+  if (!matchedKey || !profiles[matchedKey]) {
     // Return a default blank profile structure if none exists
     return {
       personalInfo: { fullName: "", title: "", email: "", phone: "", location: "", bio: "", website: "", avatar: "" },
@@ -82,22 +83,24 @@ async function getProfile(username) {
       achievements: []
     };
   }
-  return profiles[username];
+  return profiles[matchedKey];
 }
 
 async function saveProfile(username, profile) {
   const profiles = await readJSON('profiles.json');
-  profiles[username] = profile;
+  const matchedKey = Object.keys(profiles).find(k => k.toLowerCase() === username.toLowerCase()) || username;
+  profiles[matchedKey] = profile;
   await writeJSON('profiles.json', profiles);
 }
 
 // Portfolio helper functions
 async function getPortfolio(username) {
   const portfolios = await readJSON('portfolios.json');
-  if (!portfolios[username]) {
+  const matchedKey = Object.keys(portfolios).find(k => k.toLowerCase() === username.toLowerCase());
+  if (!matchedKey || !portfolios[matchedKey]) {
     return samplePortfolio;
   }
-  return portfolios[username];
+  return portfolios[matchedKey];
 }
 
 async function savePortfolio(username, portfolio) {
