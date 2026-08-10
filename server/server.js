@@ -2,7 +2,7 @@ const http = require('http');
 const { handleApiRequest } = require('./routes/api');
 const { initStorage } = require('./services/storageService');
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Initialize database files
 initStorage().then(() => {
