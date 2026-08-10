@@ -216,7 +216,7 @@ export default function PortfolioBuilder() {
             <div className="viewport-header-row">
               <div className="mock-address-bar">
                 <Globe size={12} />
-                <span>arjunkumar.devportfolio.com</span>
+                <span>arjunkumar.profolio.com</span>
               </div>
             </div>
             <div className="viewport-preview-area">

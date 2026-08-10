@@ -292,7 +292,7 @@ export default function PortfolioPreview({ profile, config }) {
     <div className={`p-viewport-wrapper ${themePresetClass}`}>
       {/* Mini Nav Bar */}
       <nav className="p-navbar">
-        <div className="p-brand">{personalInfo.fullName || 'DevPortfolio'}</div>
+        <div className="p-brand">{personalInfo.fullName || 'Profolio'}</div>
         <div className="p-nav-links">
           {sectionOrder.map(sec => {
             if (!visibleSections[sec] || sec === 'hero') return null;

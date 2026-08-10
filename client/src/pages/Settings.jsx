@@ -139,7 +139,7 @@ export default function Settings({ currentUser }) {
               <SettingsIcon size={16} />
               <span>App Appearance</span>
             </h3>
-            <p className="settings-card-desc">Select how DevPortfolio interface appears on your local computer.</p>
+            <p className="settings-card-desc">Select how Profolio interface appears on your local computer.</p>
             
             <div className="appearance-options-list">
               <button 

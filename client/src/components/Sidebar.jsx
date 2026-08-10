@@ -58,7 +58,7 @@ export default function Sidebar({ currentUser, onLogout }) {
     <>
       {/* Mobile Header Bar */}
       <div className="mobile-header">
-        <div className="logo-text">DevPortfolio</div>
+        <div className="logo-text">Profolio</div>
         <button className="menu-toggle" onClick={() => setIsOpen(!isOpen)} aria-label="Toggle Menu">
           {isOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -67,8 +67,8 @@ export default function Sidebar({ currentUser, onLogout }) {
       {/* Sidebar Container */}
       <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="logo-symbol">DP</div>
-          <div className="logo-text">DevPortfolio</div>
+          <div className="logo-symbol">PF</div>
+          <div className="logo-text">Profolio</div>
         </div>
 
         <nav className="sidebar-nav">
@@ -96,7 +96,7 @@ export default function Sidebar({ currentUser, onLogout }) {
             </div>
             <div className="user-text">
               <div className="username">{currentUser || 'Guest User'}</div>
-              <div className="email">{userEmail || 'developer@devportfolio.net'}</div>
+              <div className="email">{userEmail || 'developer@profolio.net'}</div>
             </div>
           </div>
 
