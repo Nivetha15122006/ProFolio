@@ -106,10 +106,22 @@ export default function PortfolioBuilder() {
           <h1 className="page-title">Portfolio Builder</h1>
           <p className="page-desc">Customize your personal website templates and toggle visible items in real time.</p>
         </div>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          <Save size={16} />
-          <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <a 
+            href={`/p/${api.auth.getCurrentUser() || 'arjun'}`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="btn btn-secondary"
+            style={{ textDecoration: 'none' }}
+          >
+            <ExternalLink size={14} />
+            <span>Open Public Site</span>
+          </a>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            <Save size={16} />
+            <span>{saving ? 'Saving...' : 'Save Configuration'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="builder-workspace-grid">

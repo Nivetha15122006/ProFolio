@@ -44,6 +44,18 @@ async function handleApiRequest(req, res, bodyBuffer) {
   
   try {
     // ----------------------------------------------------
+    // PUBLIC PROFILE ROUTE (No Auth Required)
+    // ----------------------------------------------------
+    if (pathname === '/api/public/profile' && method === 'GET') {
+      const queryUser = url.searchParams.get('username');
+      if (!queryUser) {
+        return sendJSON(res, 400, { error: "Username parameter is required." });
+      }
+      const userProfile = await storage.getProfile(queryUser);
+      const userPortfolio = await storage.getPortfolio(queryUser);
+      return sendJSON(res, 200, { profile: userProfile, portfolio: userPortfolio });
+    }
+    // ----------------------------------------------------
     // AUTHENTICATION ROUTES
     // ----------------------------------------------------
     if (pathname === '/api/auth/register' && method === 'POST') {

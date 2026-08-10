@@ -194,5 +194,12 @@ export const api = {
         body: formData
       });
     }
+  },
+  
+  // Public Portfolio View API
+  public: {
+    getProfile(username) {
+      return request(`/public/profile?username=${username}`);
+    }
   }
 };

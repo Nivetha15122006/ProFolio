@@ -18,6 +18,7 @@ import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
+import PublicPortfolio from './pages/PublicPortfolio';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -50,6 +51,8 @@ export default function App() {
               currentUser ? <Navigate to="/dashboard" replace /> : <Register onLoginSuccess={handleLoginSuccess} />
             } 
           />
+
+          <Route path="/p/:username" element={<PublicPortfolio />} />
 
           {/* Secure App Dashboard Routes */}
           <Route 
