@@ -29,6 +29,8 @@ async function handleApiRequest(req, res, bodyBuffer) {
   const pathname = url.pathname;
   const method = req.method;
   
+  console.log(`[API Router] Incoming request: ${method} ${pathname}`);
+  
   // Handle CORS Preflight OPTIONS requests
   if (method === 'OPTIONS') {
     res.writeHead(204, {
