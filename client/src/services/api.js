@@ -77,6 +77,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ templateId })
       });
+    },
+    restoreBackup() {
+      return request('/profile/restore-backup', {
+        method: 'POST'
+      });
     }
   },
   

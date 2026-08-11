@@ -12,7 +12,7 @@ export default function ResumeBuilder() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [showingSampleFor, setShowingSampleFor] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeEditTab, setActiveEditTab] = useState('personal');
   const [isDirty, setIsDirty] = useState(false);
@@ -207,20 +207,35 @@ export default function ResumeBuilder() {
       setToastMsg("Failed to reload your profile details.");
     } finally {
       setLoading(false);
-      setSelectedRole(null);
     }
   };
 
-  const handleLoadSampleContent = async (roleId, roleName) => {
+  const handleLoadSampleContent = async (roleId, roleName, layout) => {
     try {
       setLoading(true);
       const res = await api.profile.loadTemplate(roleId);
       setProfile(res.profile);
       setIsDirty(false);
-      setToastMsg(`Loaded ${roleName} sample content and layout!`);
-      setSelectedRole(null);
+      setShowingSampleFor(roleName);
+      setConfig(prev => ({ ...prev, template: layout }));
+      setToastMsg(`Loaded ${roleName} sample content!`);
     } catch (err) {
       setToastMsg("Failed to load sample content.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReplaceWithMyDetails = async () => {
+    try {
+      setLoading(true);
+      const res = await api.profile.restoreBackup();
+      setProfile(res.profile);
+      setShowingSampleFor(null);
+      setIsDirty(false);
+      setToastMsg("Replaced template content with your own profile details!");
+    } catch (err) {
+      setToastMsg("Failed to replace template content.");
     } finally {
       setLoading(false);
     }
@@ -287,7 +302,7 @@ export default function ResumeBuilder() {
                     key={role.id}
                     type="button"
                     className="role-preset-card"
-                    onClick={() => setSelectedRole(role)}
+                    onClick={() => handleLoadSampleContent(role.id, role.name, role.layout)}
                   >
                     <div className="role-card-icon-wrapper">
                       <RoleIcon size={16} />
@@ -443,7 +458,16 @@ export default function ResumeBuilder() {
 
         {/* Right Side: Resume interactive preview pane */}
         <div className="builder-preview-col">
-          {isDirty && (
+          {showingSampleFor && (
+            <div className="floating-save-bar sample-info-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#e0f2fe', border: '1px solid #3b82f6', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#0369a1', fontSize: '0.8rem' }}>
+              <span style={{ fontWeight: 600 }}>✨ Showing {showingSampleFor} template. Click here to replace with your details:</span>
+              <button type="button" className="btn btn-primary" onClick={handleReplaceWithMyDetails} style={{ padding: '4px 12px', fontSize: '0.75rem', backgroundColor: '#0284c7', borderColor: '#0284c7' }}>
+                Replace with My Details
+              </button>
+            </div>
+          )}
+          
+          {isDirty && !showingSampleFor && (
             <div className="floating-save-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent-color)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '0.8rem' }}>
               <span style={{ fontWeight: 600 }}>⚠️ You have unsaved direct resume edits! Click save to sync with database:</span>
               <button type="button" className="btn btn-primary" onClick={handleSaveDirectEdits} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
@@ -458,57 +482,14 @@ export default function ResumeBuilder() {
               onProfileChange={(updated) => {
                 setProfile(updated);
                 setIsDirty(true);
+                setShowingSampleFor(null);
               }}
             />
           </div>
         </div>
       </div>
 
-      {/* 1. TEMPLATE OPTION CHOOSE MODAL (Canva Style) */}
-      {selectedRole && (
-        <div className="builder-modal-overlay">
-          <div className="builder-modal-card">
-            <div className="modal-header">
-              <h3>{selectedRole.name} Preset Option</h3>
-              <button className="modal-close-btn" onClick={() => setSelectedRole(null)}>
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="modal-body">
-              <p className="modal-intro">
-                You selected the **{selectedRole.name}** layout template. How would you like to load it?
-              </p>
-              
-              <div className="modal-options-row">
-                {/* Option A: Inject personal details */}
-                <div className="modal-option-box">
-                  <h4>Use Template Only</h4>
-                  <p>Apply this resume layout style but keep your <strong>own custom profile details</strong> (projects, name, credentials).</p>
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={() => handleUseTemplateLayoutOnly(selectedRole.layout)}
-                  >
-                    Replace with My Details
-                  </button>
-                </div>
 
-                {/* Option B: Load Full Sample */}
-                <div className="modal-option-box highlight-box">
-                  <h4>Load Full Sample Content</h4>
-                  <p>Overwrite the workspace with the pre-seeded mock profile data (projects, skills, achievements) to edit and start.</p>
-                  <button 
-                    className="btn btn-primary" 
-                    onClick={() => handleLoadSampleContent(selectedRole.id, selectedRole.name)}
-                  >
-                    Load Sample Content
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 2. TABBED QUICK EDIT DETAILS MODAL */}
       {isEditModalOpen && (

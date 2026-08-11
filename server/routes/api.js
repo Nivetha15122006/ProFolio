@@ -68,6 +68,14 @@ async function handleApiRequest(req, res, bodyBuffer) {
         return sendJSON(res, 400, { error: "Template not found." });
       }
       
+      // Backup original user profile before overwriting it (only if it's not already a template!)
+      const currentProfile = await storage.getProfile(username);
+      const templateNames = ["Jane Doe", "Sarah Chen", "Sophia Patel", "Marcus Aurelius", "Emily Johnson", "Arjun Patel", "Arjun"];
+      const isSample = templateNames.includes(currentProfile.personalInfo?.fullName);
+      if (!isSample && currentProfile.personalInfo?.fullName && currentProfile.personalInfo.fullName !== username) {
+        await storage.saveProfile(`backup_${username}`, currentProfile);
+      }
+
       // Save template as the user's active profile details
       await storage.saveProfile(username, templateData);
       
@@ -93,6 +101,44 @@ async function handleApiRequest(req, res, bodyBuffer) {
       
       eventEmitter.emit('portfolioUpdated', { username, update: 'templateLoaded' });
       return sendJSON(res, 200, { message: "Template loaded successfully.", profile: templateData });
+    }
+    
+    if (pathname === '/api/profile/restore-backup' && method === 'POST') {
+      const backupProfile = await storage.getProfile(`backup_${username}`);
+      
+      const templateNames = ["Jane Doe", "Sarah Chen", "Sophia Patel", "Marcus Aurelius", "Emily Johnson", "Arjun Patel", "Arjun"];
+      const hasBackup = backupProfile && 
+                        backupProfile.personalInfo && 
+                        backupProfile.personalInfo.fullName && 
+                        !templateNames.includes(backupProfile.personalInfo.fullName) &&
+                        backupProfile.personalInfo.fullName !== `backup_${username}`;
+                        
+      if (hasBackup) {
+        await storage.saveProfile(username, backupProfile);
+        return sendJSON(res, 200, { message: "Backup restored successfully.", profile: backupProfile });
+      } else {
+        // No backup exists, let's create a clean profile with their registered username!
+        const cleanProfile = {
+          personalInfo: { 
+            fullName: username.charAt(0).toUpperCase() + username.slice(1), 
+            title: "Software Engineer", 
+            email: `${username.toLowerCase()}@example.com`, 
+            phone: "", 
+            location: "", 
+            bio: "I am a professional developer.", 
+            website: "", 
+            avatar: "" 
+          },
+          socialLinks: [],
+          education: [],
+          skills: [],
+          projects: [],
+          certifications: [],
+          achievements: []
+        };
+        await storage.saveProfile(username, cleanProfile);
+        return sendJSON(res, 200, { message: "Clean profile initialized.", profile: cleanProfile });
+      }
     }
     // ----------------------------------------------------
     // AUTHENTICATION ROUTES
