@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Printer, ArrowUp, ArrowDown, Eye, EyeOff, 
   Settings, Type, Layout, Palette, Sparkles,
-  Code, Database, Brain, Cpu, PenTool
+  Code, Database, Brain, Cpu, PenTool, Edit3, Plus, X
 } from 'lucide-react';
 import { api } from '../services/api';
 import ResumePreview from '../components/ResumePreview';
@@ -12,7 +12,9 @@ export default function ResumeBuilder() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
-  
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   // Resume configuration settings
   const [config, setConfig] = useState({
     template: 'Modern Developer',
@@ -30,9 +32,31 @@ export default function ResumeBuilder() {
     sectionOrder: ['summary', 'skills', 'projects', 'education', 'certifications', 'achievements']
   });
 
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    title: '',
+    email: '',
+    phone: '',
+    location: '',
+    bio: ''
+  });
+
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (profile && profile.personalInfo) {
+      setEditForm({
+        fullName: profile.personalInfo.fullName || '',
+        title: profile.personalInfo.title || '',
+        email: profile.personalInfo.email || '',
+        phone: profile.personalInfo.phone || '',
+        location: profile.personalInfo.location || '',
+        bio: profile.personalInfo.bio || ''
+      });
+    }
+  }, [profile]);
 
   const fetchProfile = async () => {
     try {
@@ -43,6 +67,25 @@ export default function ResumeBuilder() {
       setToastMsg("Failed to load profile details.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const updatedProfile = {
+        ...profile,
+        personalInfo: {
+          ...profile.personalInfo,
+          ...editForm
+        }
+      };
+      const res = await api.profile.update(updatedProfile);
+      setProfile(res);
+      setToastMsg("Resume details updated successfully!");
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setToastMsg("Failed to update resume details.");
     }
   };
 
@@ -64,7 +107,6 @@ export default function ResumeBuilder() {
     
     if (targetIndex < 0 || targetIndex >= newOrder.length) return;
     
-    // Swap
     const temp = newOrder[index];
     newOrder[index] = newOrder[targetIndex];
     newOrder[targetIndex] = temp;
@@ -74,13 +116,67 @@ export default function ResumeBuilder() {
 
   // Print helper
   const handlePrint = () => {
-    // Add print class to body
     document.body.classList.add('print-mode-active');
     window.print();
-    // Remove after printing dialog closes
     setTimeout(() => {
       document.body.classList.remove('print-mode-active');
     }, 1000);
+  };
+
+  // Preset Role Cards configurations
+  const rolePresetsCatalog = [
+    { id: 'software_frontend', name: 'Front-End Dev', desc: 'React, TS, Tailwind CSS', icon: Code, layout: 'Modern Developer' },
+    { id: 'software_backend', name: 'Back-End Eng', desc: 'Node.js, Docker, REST APIs', icon: Database, layout: 'Modern Developer' },
+    { id: 'ml_vision', name: 'Computer Vision', desc: 'PyTorch, CUDA, GPUs', icon: Brain, layout: 'Clean Academic' },
+    { id: 'ml_nlp', name: 'NLP Scientist', desc: 'Transformers, LLMs', icon: Cpu, layout: 'Clean Academic' },
+    { id: 'creator_designer', name: 'UI/UX Designer', desc: 'Figma mockups, design layouts', icon: Palette, layout: 'Minimal Professional' },
+    { id: 'creator_writer', name: 'Tech Writer', desc: 'Markdown scripts, API documentation', icon: PenTool, layout: 'Minimal Professional' }
+  ];
+
+  const handleStartFromScratch = async () => {
+    if (window.confirm("Do you want to clear the sample data and start from scratch with your own custom profile details?")) {
+      try {
+        setLoading(true);
+        // Put a default blank profile structure
+        const defaultBlank = {
+          personalInfo: { fullName: "My Name", title: "My Professional Title", email: "my.email@domain.com", phone: "", location: "", bio: "", website: "", avatar: "" },
+          socialLinks: [],
+          education: [],
+          skills: [],
+          projects: [],
+          certifications: [],
+          achievements: []
+        };
+        await api.profile.update(defaultBlank);
+        setProfile(defaultBlank);
+        setConfig(prev => ({ ...prev, template: 'Minimal Professional' }));
+        setToastMsg("Cleared workspace! Start customizing your resume.");
+      } catch (err) {
+        setToastMsg("Failed to initialize blank profile.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleUseTemplateLayoutOnly = (layout) => {
+    setConfig(prev => ({ ...prev, template: layout }));
+    setToastMsg(`Activated layout: ${layout} using your profile details!`);
+    setSelectedRole(null);
+  };
+
+  const handleLoadSampleContent = async (roleId, roleName) => {
+    try {
+      setLoading(true);
+      const res = await api.profile.loadTemplate(roleId);
+      setProfile(res.profile);
+      setToastMsg(`Loaded ${roleName} sample content and layout!`);
+      setSelectedRole(null);
+    } catch (err) {
+      setToastMsg("Failed to load sample content.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -94,19 +190,76 @@ export default function ResumeBuilder() {
           <h1 className="page-title">Resume Builder</h1>
           <p className="page-desc">Style and print an ATS-ready resume populated directly from your profile data.</p>
         </div>
-        <button className="btn btn-primary" onClick={handlePrint}>
-          <Printer size={16} />
-          <span>Print / Download PDF</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="btn btn-secondary" onClick={() => setIsEditModalOpen(true)}>
+            <Edit3 size={16} />
+            <span>Edit Resume Details</span>
+          </button>
+          <button className="btn btn-primary" onClick={handlePrint}>
+            <Printer size={16} />
+            <span>Print / Download PDF</span>
+          </button>
+        </div>
       </div>
 
       <div className="builder-workspace-grid">
         {/* Left Side: Controls panel */}
         <div className="builder-controls-col">
+          
+          {/* Skeletons Picker */}
+          <div className="card control-group-card">
+            <h3 className="control-card-heading">
+              <Sparkles size={16} />
+              <span>Choose a Template</span>
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
+              Select a visual mockup to configure your layout, or load sample content.
+            </p>
+            
+            <div className="role-templates-grid">
+              {/* Creator from Scratch Card */}
+              <button
+                type="button"
+                className="role-preset-card scratch-card"
+                onClick={handleStartFromScratch}
+              >
+                <div className="role-card-icon-wrapper scratch-icon">
+                  <Plus size={16} />
+                </div>
+                <div className="role-card-info">
+                  <span className="role-name">Create Your Own</span>
+                  <span className="role-desc">Start clean template</span>
+                </div>
+              </button>
+
+              {/* Preset Skeletons */}
+              {rolePresetsCatalog.map(role => {
+                const RoleIcon = role.icon;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    className="role-preset-card"
+                    onClick={() => setSelectedRole(role)}
+                  >
+                    <div className="role-card-icon-wrapper">
+                      <RoleIcon size={16} />
+                    </div>
+                    <div className="role-card-info">
+                      <span className="role-name">{role.name}</span>
+                      <span className="role-desc">{role.desc}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Design Customizations */}
           <div className="card control-group-card">
             <h3 className="control-card-heading">
               <Layout size={16} />
-              <span>Layout Design</span>
+              <span>Layout Styles</span>
             </h3>
             
             <div className="form-group">
@@ -155,58 +308,6 @@ export default function ResumeBuilder() {
                   />
                 ))}
               </div>
-            </div>
-          </div>
-
-          <div className="card control-group-card">
-            <h3 className="control-card-heading">
-              <Sparkles size={16} />
-              <span>Role-Based Skeletons</span>
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
-              Select a professional skeleton to instantly seed your resume with verified industry data.
-            </p>
-            
-            <div className="role-templates-grid">
-              {[
-                { id: 'software_frontend', name: 'Front-End Dev', desc: 'React, TS, Tailwind', icon: Code },
-                { id: 'software_backend', name: 'Back-End Eng', desc: 'Node, Docker, APIs', icon: Database },
-                { id: 'ml_vision', name: 'Computer Vision', desc: 'PyTorch, CV, GPUs', icon: Brain },
-                { id: 'ml_nlp', name: 'NLP Scientist', desc: 'Transformers, LLMs', icon: Cpu },
-                { id: 'creator_designer', name: 'UI/UX Designer', desc: 'Figma, wireframes', icon: Palette },
-                { id: 'creator_writer', name: 'Tech Writer', desc: 'Markdown, APIs', icon: PenTool }
-              ].map(role => {
-                const RoleIcon = role.icon;
-                return (
-                  <button
-                    key={role.id}
-                    type="button"
-                    className="role-preset-card"
-                    onClick={async () => {
-                      if (window.confirm(`Are you sure you want to load the "${role.name}" template? This will replace your current workspace details.`)) {
-                        try {
-                          setLoading(true);
-                          const res = await api.profile.loadTemplate(role.id);
-                          setProfile(res.profile);
-                          setToastMsg(`Loaded ${role.name} template!`);
-                        } catch (err) {
-                          setToastMsg("Failed to load template.");
-                        } finally {
-                          setLoading(false);
-                        }
-                      }
-                    }}
-                  >
-                    <div className="role-card-icon-wrapper">
-                      <RoleIcon size={16} />
-                    </div>
-                    <div className="role-card-info">
-                      <span className="role-name">{role.name}</span>
-                      <span className="role-desc">{role.desc}</span>
-                    </div>
-                  </button>
-                );
-              })}
             </div>
           </div>
 
@@ -301,6 +402,137 @@ export default function ResumeBuilder() {
         </div>
       </div>
 
+      {/* 1. TEMPLATE OPTION CHOOSE MODAL (Canva Style) */}
+      {selectedRole && (
+        <div className="builder-modal-overlay">
+          <div className="builder-modal-card">
+            <div className="modal-header">
+              <h3>{selectedRole.name} Preset Option</h3>
+              <button className="modal-close-btn" onClick={() => setSelectedRole(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p className="modal-intro">
+                You selected the **{selectedRole.name}** layout template. How would you like to load it?
+              </p>
+              
+              <div className="modal-options-row">
+                {/* Option A: Inject personal details */}
+                <div className="modal-option-box">
+                  <h4>Use Template Only</h4>
+                  <p>Apply this resume layout style but keep your <strong>own custom profile details</strong> (projects, name, credentials).</p>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleUseTemplateLayoutOnly(selectedRole.layout)}
+                  >
+                    Replace with My Details
+                  </button>
+                </div>
+
+                {/* Option B: Load Full Sample */}
+                <div className="modal-option-box highlight-box">
+                  <h4>Load Full Sample Content</h4>
+                  <p>Overwrite the workspace with the pre-seeded mock profile data (projects, skills, achievements) to edit and start.</p>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => handleLoadSampleContent(selectedRole.id, selectedRole.name)}
+                  >
+                    Load Sample Content
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. QUICK EDIT PROFILE DETAILS MODAL */}
+      {isEditModalOpen && (
+        <div className="builder-modal-overlay">
+          <div className="builder-modal-card edit-details-modal">
+            <div className="modal-header">
+              <h3>Quick Edit Resume Details</h3>
+              <button className="modal-close-btn" onClick={() => setIsEditModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditSubmit} className="modal-body">
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={editForm.fullName} 
+                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} 
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Professional Title</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={editForm.title} 
+                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} 
+                  required 
+                />
+              </div>
+
+              <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    value={editForm.email} 
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} 
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={editForm.phone} 
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} 
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Location</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={editForm.location} 
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Professional Summary</label>
+                <textarea 
+                  className="form-textarea" 
+                  value={editForm.bio} 
+                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                  style={{ minHeight: '80px' }}
+                />
+              </div>
+
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {toastMsg && (
         <Toast 
           message={toastMsg} 
@@ -384,16 +616,16 @@ export default function ResumeBuilder() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.5rem 0.75rem;
+          padding: 0.5rem;
           border: 1px solid var(--border-color);
           border-radius: var(--radius-sm);
-          background-color: var(--bg-app);
+          background-color: var(--bg-surface-hover);
         }
 
         .section-item-left {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 0.5rem;
         }
 
         .visibility-toggle-btn {
@@ -410,11 +642,12 @@ export default function ResumeBuilder() {
         }
 
         .section-name-label {
-          font-size: 0.85rem;
-          font-weight: 500;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--text-primary);
         }
 
-        .text-muted-line {
+        .section-name-label.text-muted-line {
           text-decoration: line-through;
           color: var(--text-muted);
         }
@@ -425,7 +658,7 @@ export default function ResumeBuilder() {
         }
 
         .order-btn {
-          background: var(--bg-surface);
+          background-color: var(--bg-surface);
           border: 1px solid var(--border-color);
           color: var(--text-secondary);
           cursor: pointer;
@@ -589,6 +822,15 @@ export default function ResumeBuilder() {
           box-shadow: var(--shadow-sm);
         }
 
+        .scratch-card {
+          border-style: dashed;
+          border-color: var(--text-muted);
+        }
+
+        .scratch-card:hover {
+          border-color: var(--accent-color);
+        }
+
         .role-card-icon-wrapper {
           color: var(--accent-color);
           background-color: var(--accent-light);
@@ -599,6 +841,16 @@ export default function ResumeBuilder() {
           align-items: center;
           justify-content: center;
           margin-bottom: 0.5rem;
+        }
+
+        .scratch-icon {
+          color: var(--text-secondary);
+          background-color: var(--border-color);
+        }
+
+        .role-preset-card:hover .scratch-icon {
+          color: var(--accent-color);
+          background-color: var(--accent-light);
         }
 
         .role-card-info {
@@ -626,6 +878,121 @@ export default function ResumeBuilder() {
           height: 60vh;
           font-size: 0.9rem;
           color: var(--text-secondary);
+        }
+
+        /* Modal Overlays (Canva Style) */
+        .builder-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+
+        .builder-modal-card {
+          background-color: var(--bg-surface);
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-lg);
+          width: 100%;
+          max-width: 540px;
+          overflow: hidden;
+          animation: modalFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .edit-details-modal {
+          max-width: 600px;
+        }
+
+        @keyframes modalFade {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid var(--border-color);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background-color: var(--bg-surface-hover);
+        }
+
+        .modal-header h3 {
+          font-size: 1.1rem;
+          font-weight: 700;
+        }
+
+        .modal-close-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          padding: 4px;
+          border-radius: 4px;
+        }
+
+        .modal-close-btn:hover {
+          background-color: var(--border-color);
+          color: var(--text-primary);
+        }
+
+        .modal-body {
+          padding: 1.5rem;
+        }
+
+        .modal-intro {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          margin-bottom: 1.5rem;
+        }
+
+        .modal-options-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.25rem;
+        }
+
+        @media (max-width: 500px) {
+          .modal-options-row {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .modal-option-box {
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-md);
+          padding: 1.25rem;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          background-color: var(--bg-surface);
+        }
+
+        .modal-option-box h4 {
+          font-size: 0.9rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .modal-option-box p {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          margin-bottom: 1.5rem;
+          line-height: 1.4;
+          flex-grow: 1;
+        }
+
+        .highlight-box {
+          border-color: var(--accent-color);
+          background-color: var(--accent-light);
         }
 
         /* Global Print Rule Injection */
