@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Printer, ArrowUp, ArrowDown, Eye, EyeOff, 
-  Settings, Type, Layout, Palette, Sparkles
+  Settings, Type, Layout, Palette, Sparkles,
+  Code, Database, Brain, Cpu, PenTool
 } from 'lucide-react';
 import { api } from '../services/api';
 import ResumePreview from '../components/ResumePreview';
@@ -105,20 +106,39 @@ export default function ResumeBuilder() {
           <div className="card control-group-card">
             <h3 className="control-card-heading">
               <Layout size={16} />
-              <span>Layout & Template</span>
+              <span>Layout Design</span>
             </h3>
             
             <div className="form-group">
-              <label className="form-label">Template Design</label>
-              <select 
-                className="form-select"
-                value={config.template}
-                onChange={(e) => setConfig({ ...config, template: e.target.value })}
-              >
-                <option>Minimal Professional</option>
-                <option>Modern Developer</option>
-                <option>Clean Academic</option>
-              </select>
+              <label className="form-label" style={{ marginBottom: '0.75rem' }}>Select Design Preset</label>
+              
+              <div className="visual-template-grid">
+                {[
+                  { name: 'Minimal Professional', desc: 'Classic single-column corporate layout', color: '#64748b' },
+                  { name: 'Modern Developer', desc: 'Tech-focused two-column design', color: '#6366f1' },
+                  { name: 'Clean Academic', desc: 'Elegant serif layout for placements', color: '#10b981' }
+                ].map(tpl => (
+                  <button
+                    key={tpl.name}
+                    type="button"
+                    className={`visual-template-card ${config.template === tpl.name ? 'active' : ''}`}
+                    onClick={() => setConfig({ ...config, template: tpl.name })}
+                  >
+                    <div className="template-card-preview-icon" style={{ borderTopColor: tpl.color }}>
+                      <div className="mock-lines">
+                        <div className="mock-line-title" style={{ backgroundColor: tpl.color }} />
+                        <div className="mock-line-sub" />
+                        <div className="mock-line-body" />
+                        <div className="mock-line-body" style={{ width: '80%' }} />
+                      </div>
+                    </div>
+                    <div className="template-card-meta">
+                      <span className="name">{tpl.name}</span>
+                      <span className="desc">{tpl.desc}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="form-group">
@@ -144,46 +164,49 @@ export default function ResumeBuilder() {
               <span>Role-Based Skeletons</span>
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
-              Select a professional template to instantly populate your dashboard workspace with resume data.
+              Select a professional skeleton to instantly seed your resume with verified industry data.
             </p>
             
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <select 
-                className="form-select"
-                defaultValue=""
-                onChange={async (e) => {
-                  const templateId = e.target.value;
-                  if (!templateId) return;
-                  
-                  if (window.confirm("Are you sure you want to load this template? It will replace your current projects, skills, and profile details.")) {
-                    try {
-                      setLoading(true);
-                      const res = await api.profile.loadTemplate(templateId);
-                      setProfile(res.profile);
-                      setToastMsg("Template loaded successfully!");
-                    } catch (err) {
-                      setToastMsg("Failed to load template.");
-                    } finally {
-                      setLoading(false);
-                    }
-                  }
-                  e.target.value = "";
-                }}
-              >
-                <option value="" disabled>-- Select a Preset Role --</option>
-                <optgroup label="Software Developer Templates">
-                  <option value="software_frontend">Front-End Developer (React/TS)</option>
-                  <option value="software_backend">Back-End Engineer (Node/Docker)</option>
-                </optgroup>
-                <optgroup label="Machine Learning / AI Templates">
-                  <option value="ml_vision">Computer Vision Engineer (PhD)</option>
-                  <option value="ml_nlp">NLP Systems Scientist (MS)</option>
-                </optgroup>
-                <optgroup label="Content Creator Templates">
-                  <option value="creator_designer">UI/UX Product Designer</option>
-                  <option value="creator_writer">Technical Writer & Advocate</option>
-                </optgroup>
-              </select>
+            <div className="role-templates-grid">
+              {[
+                { id: 'software_frontend', name: 'Front-End Dev', desc: 'React, TS, Tailwind', icon: Code },
+                { id: 'software_backend', name: 'Back-End Eng', desc: 'Node, Docker, APIs', icon: Database },
+                { id: 'ml_vision', name: 'Computer Vision', desc: 'PyTorch, CV, GPUs', icon: Brain },
+                { id: 'ml_nlp', name: 'NLP Scientist', desc: 'Transformers, LLMs', icon: Cpu },
+                { id: 'creator_designer', name: 'UI/UX Designer', desc: 'Figma, wireframes', icon: Palette },
+                { id: 'creator_writer', name: 'Tech Writer', desc: 'Markdown, APIs', icon: PenTool }
+              ].map(role => {
+                const RoleIcon = role.icon;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    className="role-preset-card"
+                    onClick={async () => {
+                      if (window.confirm(`Are you sure you want to load the "${role.name}" template? This will replace your current workspace details.`)) {
+                        try {
+                          setLoading(true);
+                          const res = await api.profile.loadTemplate(role.id);
+                          setProfile(res.profile);
+                          setToastMsg(`Loaded ${role.name} template!`);
+                        } catch (err) {
+                          setToastMsg("Failed to load template.");
+                        } finally {
+                          setLoading(false);
+                        }
+                      }
+                    }}
+                  >
+                    <div className="role-card-icon-wrapper">
+                      <RoleIcon size={16} />
+                    </div>
+                    <div className="role-card-info">
+                      <span className="role-name">{role.name}</span>
+                      <span className="role-desc">{role.desc}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -443,6 +466,157 @@ export default function ResumeBuilder() {
             padding: 1rem;
             max-height: none;
           }
+        }
+
+        /* Visual Templates & Role Skeletons Canva-style Layouts */
+        .visual-template-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-top: 0.5rem;
+        }
+
+        .visual-template-card {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          width: 100%;
+          text-align: left;
+          padding: 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          background-color: var(--bg-surface);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .visual-template-card:hover {
+          border-color: var(--border-hover);
+          background-color: var(--bg-surface-hover);
+          transform: translateY(-1px);
+        }
+
+        .visual-template-card.active {
+          border-color: var(--accent-color);
+          background-color: var(--accent-light);
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+        }
+
+        .template-card-preview-icon {
+          width: 44px;
+          height: 52px;
+          border-top: 3px solid;
+          border-left: 1px solid var(--border-color);
+          border-right: 1px solid var(--border-color);
+          border-bottom: 1px solid var(--border-color);
+          border-radius: 4px;
+          padding: 4px;
+          background-color: var(--bg-surface);
+          flex-shrink: 0;
+        }
+
+        .mock-lines {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          height: 100%;
+          justify-content: center;
+        }
+
+        .mock-line-title {
+          height: 4px;
+          width: 60%;
+          border-radius: 1px;
+        }
+
+        .mock-line-sub {
+          height: 2px;
+          width: 40%;
+          background-color: var(--border-color);
+          border-radius: 0.5px;
+        }
+
+        .mock-line-body {
+          height: 2px;
+          width: 100%;
+          background-color: var(--border-color);
+          border-radius: 0.5px;
+        }
+
+        .template-card-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .template-card-meta .name {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
+        .template-card-meta .desc {
+          font-size: 0.7rem;
+          color: var(--text-secondary);
+          line-height: 1.3;
+        }
+
+        .role-templates-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+
+        .role-preset-card {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          text-align: left;
+          padding: 0.75rem;
+          border: 1px solid var(--border-color);
+          border-radius: var(--radius-sm);
+          background-color: var(--bg-surface);
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          width: 100%;
+        }
+
+        .role-preset-card:hover {
+          border-color: var(--border-hover);
+          background-color: var(--bg-surface-hover);
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .role-card-icon-wrapper {
+          color: var(--accent-color);
+          background-color: var(--accent-light);
+          width: 30px;
+          height: 30px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .role-card-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .role-name {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
+        .role-desc {
+          font-size: 0.65rem;
+          color: var(--text-secondary);
+          line-height: 1.2;
         }
 
         .resume-builder-loading {
