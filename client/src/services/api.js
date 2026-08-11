@@ -71,6 +71,12 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(profileData)
       });
+    },
+    loadTemplate(templateId) {
+      return request('/profile/load-template', {
+        method: 'POST',
+        body: JSON.stringify({ templateId })
+      });
     }
   },
   

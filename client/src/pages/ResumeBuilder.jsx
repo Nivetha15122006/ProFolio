@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Printer, ArrowUp, ArrowDown, Eye, EyeOff, 
-  Settings, Type, Layout, Palette
+  Settings, Type, Layout, Palette, Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
 import ResumePreview from '../components/ResumePreview';
@@ -140,6 +140,55 @@ export default function ResumeBuilder() {
 
           <div className="card control-group-card">
             <h3 className="control-card-heading">
+              <Sparkles size={16} />
+              <span>Role-Based Skeletons</span>
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
+              Select a professional template to instantly populate your dashboard workspace with resume data.
+            </p>
+            
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select 
+                className="form-select"
+                defaultValue=""
+                onChange={async (e) => {
+                  const templateId = e.target.value;
+                  if (!templateId) return;
+                  
+                  if (window.confirm("Are you sure you want to load this template? It will replace your current projects, skills, and profile details.")) {
+                    try {
+                      setLoading(true);
+                      const res = await api.profile.loadTemplate(templateId);
+                      setProfile(res.profile);
+                      setToastMsg("Template loaded successfully!");
+                    } catch (err) {
+                      setToastMsg("Failed to load template.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                  e.target.value = "";
+                }}
+              >
+                <option value="" disabled>-- Select a Preset Role --</option>
+                <optgroup label="Software Developer Templates">
+                  <option value="software_frontend">Front-End Developer (React/TS)</option>
+                  <option value="software_backend">Back-End Engineer (Node/Docker)</option>
+                </optgroup>
+                <optgroup label="Machine Learning / AI Templates">
+                  <option value="ml_vision">Computer Vision Engineer (PhD)</option>
+                  <option value="ml_nlp">NLP Systems Scientist (MS)</option>
+                </optgroup>
+                <optgroup label="Content Creator Templates">
+                  <option value="creator_designer">UI/UX Product Designer</option>
+                  <option value="creator_writer">Technical Writer & Advocate</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <div className="card control-group-card">
+            <h3 className="control-card-heading">
               <Type size={16} />
               <span>Typography & Density</span>
             </h3>
@@ -229,7 +278,13 @@ export default function ResumeBuilder() {
         </div>
       </div>
 
-      {toastMsg && <Toast message={toastMsg} type="error" onClose={() => setToastMsg('')} />}
+      {toastMsg && (
+        <Toast 
+          message={toastMsg} 
+          type={toastMsg.toLowerCase().includes('fail') ? 'error' : 'success'} 
+          onClose={() => setToastMsg('')} 
+        />
+      )}
 
       <style>{`
         .resume-builder-page {

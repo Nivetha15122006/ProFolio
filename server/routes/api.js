@@ -2,6 +2,7 @@ const storage = require('../services/storageService');
 const eventEmitter = require('../events/eventLogger');
 const { parseMultipart } = require('../utils/multipartParser');
 const { extractText } = require('../utils/pdfParser');
+const roleTemplates = require('../data/roleTemplates');
 
 // Utility helper to send JSON responses
 function sendJSON(res, statusCode, data) {
@@ -56,6 +57,42 @@ async function handleApiRequest(req, res, bodyBuffer) {
       const userProfile = await storage.getProfile(queryUser);
       const userPortfolio = await storage.getPortfolio(queryUser);
       return sendJSON(res, 200, { profile: userProfile, portfolio: userPortfolio });
+    }
+    // ----------------------------------------------------
+    // LOAD PREDEFINED ROLE TEMPLATE
+    // ----------------------------------------------------
+    if (pathname === '/api/profile/load-template' && method === 'POST') {
+      const { templateId } = JSON.parse(bodyBuffer.toString());
+      const templateData = roleTemplates[templateId];
+      if (!templateData) {
+        return sendJSON(res, 400, { error: "Template not found." });
+      }
+      
+      // Save template as the user's active profile details
+      await storage.saveProfile(username, templateData);
+      
+      // Configure default layout parameters to match template type
+      const defaultPortfolio = {
+        template: templateId.includes('creator') ? 'Editorial' : 'Developer',
+        theme: 'dark',
+        heroStyle: 'minimalist',
+        projectLayout: 'grid',
+        visibleSections: {
+          hero: true,
+          about: true,
+          skills: true,
+          projects: true,
+          education: true,
+          certifications: true,
+          achievements: true,
+          contact: true
+        },
+        sectionOrder: ["hero", "about", "skills", "projects", "education", "certifications", "achievements", "contact"]
+      };
+      await storage.savePortfolio(username, defaultPortfolio);
+      
+      eventEmitter.emit('portfolioUpdated', { username, update: 'templateLoaded' });
+      return sendJSON(res, 200, { message: "Template loaded successfully.", profile: templateData });
     }
     // ----------------------------------------------------
     // AUTHENTICATION ROUTES
