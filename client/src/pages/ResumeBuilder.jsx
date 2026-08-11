@@ -14,6 +14,7 @@ export default function ResumeBuilder() {
   const [toastMsg, setToastMsg] = useState('');
   const [selectedRole, setSelectedRole] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeEditTab, setActiveEditTab] = useState('personal');
 
   // Resume configuration settings
   const [config, setConfig] = useState({
@@ -41,20 +42,31 @@ export default function ResumeBuilder() {
     bio: ''
   });
 
+  const [skillsText, setSkillsText] = useState('');
+  const [projectsForm, setProjectsForm] = useState([]);
+  const [educationForm, setEducationForm] = useState([]);
+
   useEffect(() => {
     fetchProfile();
   }, []);
 
   useEffect(() => {
-    if (profile && profile.personalInfo) {
+    if (profile) {
       setEditForm({
-        fullName: profile.personalInfo.fullName || '',
-        title: profile.personalInfo.title || '',
-        email: profile.personalInfo.email || '',
-        phone: profile.personalInfo.phone || '',
-        location: profile.personalInfo.location || '',
-        bio: profile.personalInfo.bio || ''
+        fullName: profile.personalInfo?.fullName || '',
+        title: profile.personalInfo?.title || '',
+        email: profile.personalInfo?.email || '',
+        phone: profile.personalInfo?.phone || '',
+        location: profile.personalInfo?.location || '',
+        bio: profile.personalInfo?.bio || ''
       });
+      if (profile.skills) {
+        setSkillsText(profile.skills.map(s => s.name).join(', '));
+      } else {
+        setSkillsText('');
+      }
+      setProjectsForm(profile.projects || []);
+      setEducationForm(profile.education || []);
     }
   }, [profile]);
 
@@ -73,13 +85,31 @@ export default function ResumeBuilder() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Map skills text back to array
+      const parsedSkills = skillsText.split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .map((name, i) => {
+          const existing = profile.skills?.find(s => s.name.toLowerCase() === name.toLowerCase());
+          return {
+            id: existing ? existing.id : `skill_${Date.now()}_${i}`,
+            name,
+            category: existing?.category || 'Core Competency',
+            level: existing?.level || 'Expert'
+          };
+        });
+
       const updatedProfile = {
         ...profile,
         personalInfo: {
           ...profile.personalInfo,
           ...editForm
-        }
+        },
+        skills: parsedSkills,
+        projects: projectsForm,
+        education: educationForm
       };
+      
       const res = await api.profile.update(updatedProfile);
       setProfile(res);
       setToastMsg("Resume details updated successfully!");
@@ -134,28 +164,17 @@ export default function ResumeBuilder() {
   ];
 
   const handleStartFromScratch = async () => {
-    if (window.confirm("Do you want to clear the sample data and start from scratch with your own custom profile details?")) {
-      try {
-        setLoading(true);
-        // Put a default blank profile structure
-        const defaultBlank = {
-          personalInfo: { fullName: "My Name", title: "My Professional Title", email: "my.email@domain.com", phone: "", location: "", bio: "", website: "", avatar: "" },
-          socialLinks: [],
-          education: [],
-          skills: [],
-          projects: [],
-          certifications: [],
-          achievements: []
-        };
-        await api.profile.update(defaultBlank);
-        setProfile(defaultBlank);
-        setConfig(prev => ({ ...prev, template: 'Minimal Professional' }));
-        setToastMsg("Cleared workspace! Start customizing your resume.");
-      } catch (err) {
-        setToastMsg("Failed to initialize blank profile.");
-      } finally {
-        setLoading(false);
-      }
+    try {
+      setLoading(true);
+      // Fetch the actual user's custom details from the database (not blanked out, keeping their real details!)
+      const originalData = await api.profile.get();
+      setProfile(originalData);
+      setConfig(prev => ({ ...prev, template: 'Minimal Professional' }));
+      setToastMsg("Loaded your own profile details! You can now edit and print.");
+    } catch (err) {
+      setToastMsg("Failed to load your profile details.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -228,7 +247,7 @@ export default function ResumeBuilder() {
                 </div>
                 <div className="role-card-info">
                   <span className="role-name">Create Your Own</span>
-                  <span className="role-desc">Start clean template</span>
+                  <span className="role-desc">Use your own profile details</span>
                 </div>
               </button>
 
@@ -448,83 +467,305 @@ export default function ResumeBuilder() {
         </div>
       )}
 
-      {/* 2. QUICK EDIT PROFILE DETAILS MODAL */}
+      {/* 2. TABBED QUICK EDIT DETAILS MODAL */}
       {isEditModalOpen && (
         <div className="builder-modal-overlay">
           <div className="builder-modal-card edit-details-modal">
             <div className="modal-header">
-              <h3>Quick Edit Resume Details</h3>
+              <h3>Edit Resume Details</h3>
               <button className="modal-close-btn" onClick={() => setIsEditModalOpen(false)}>
                 <X size={18} />
               </button>
             </div>
             
-            <form onSubmit={handleEditSubmit} className="modal-body">
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.fullName} 
-                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} 
-                  required 
-                />
-              </div>
+            <div className="modal-tab-bar">
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${activeEditTab === 'personal' ? 'active' : ''}`}
+                onClick={() => setActiveEditTab('personal')}
+              >
+                Personal Info
+              </button>
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${activeEditTab === 'skills' ? 'active' : ''}`}
+                onClick={() => setActiveEditTab('skills')}
+              >
+                Skills
+              </button>
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${activeEditTab === 'projects' ? 'active' : ''}`}
+                onClick={() => setActiveEditTab('projects')}
+              >
+                Projects ({projectsForm.length})
+              </button>
+              <button 
+                type="button" 
+                className={`modal-tab-btn ${activeEditTab === 'education' ? 'active' : ''}`}
+                onClick={() => setActiveEditTab('education')}
+              >
+                Education ({educationForm.length})
+              </button>
+            </div>
+            
+            <form onSubmit={handleEditSubmit} className="modal-body" style={{ paddingTop: 0 }}>
+              
+              {/* Tab 1: Personal Info */}
+              {activeEditTab === 'personal' && (
+                <div>
+                  <div className="form-group">
+                    <label className="form-label">Full Name</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={editForm.fullName} 
+                      onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} 
+                      required 
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label className="form-label">Professional Title</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.title} 
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} 
-                  required 
-                />
-              </div>
+                  <div className="form-group">
+                    <label className="form-label">Professional Title</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={editForm.title} 
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} 
+                      required 
+                    />
+                  </div>
 
-              <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <input 
-                    type="email" 
-                    className="form-input" 
-                    value={editForm.email} 
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} 
-                    required 
-                  />
+                  <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Email Address</label>
+                      <input 
+                        type="email" 
+                        className="form-input" 
+                        value={editForm.email} 
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone Number</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        value={editForm.phone} 
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Location</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={editForm.location} 
+                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} 
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Professional Summary</label>
+                    <textarea 
+                      className="form-textarea" 
+                      value={editForm.bio} 
+                      onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                      style={{ minHeight: '80px' }}
+                    />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Phone Number</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={editForm.phone} 
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} 
-                  />
+              )}
+
+              {/* Tab 2: Skills */}
+              {activeEditTab === 'skills' && (
+                <div>
+                  <div className="form-group">
+                    <label className="form-label">Core Skills (Comma-separated)</label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      List your key technical skills separated by commas (e.g. React, Node.js, Python, CSS)
+                    </p>
+                    <textarea 
+                      className="form-textarea" 
+                      value={skillsText} 
+                      onChange={(e) => setSkillsText(e.target.value)}
+                      style={{ minHeight: '150px' }}
+                      placeholder="React, Node.js, Mongoose, Express, Docker..."
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="form-group">
-                <label className="form-label">Location</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.location} 
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} 
-                />
-              </div>
+              {/* Tab 3: Projects */}
+              {activeEditTab === 'projects' && (
+                <div className="modal-scroll-section" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {projectsForm.map((proj, idx) => (
+                    <div key={idx} className="edit-modal-sub-card" style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1rem', backgroundColor: 'var(--bg-surface-hover)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--accent-color)' }}>Project #{idx + 1}</span>
+                        <button 
+                          type="button" 
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => setProjectsForm(projectsForm.filter((_, i) => i !== idx))}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Project Name</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={proj.name} 
+                          onChange={(e) => {
+                            const updated = [...projectsForm];
+                            updated[idx].name = e.target.value;
+                            setProjectsForm(updated);
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Description</label>
+                        <textarea 
+                          className="form-textarea" 
+                          value={proj.shortDesc} 
+                          onChange={(e) => {
+                            const updated = [...projectsForm];
+                            updated[idx].shortDesc = e.target.value;
+                            setProjectsForm(updated);
+                          }}
+                          style={{ minHeight: '60px' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Technologies (Comma-separated)</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={Array.isArray(proj.technologies) ? proj.technologies.join(', ') : (proj.technologies || '')} 
+                          onChange={(e) => {
+                            const updated = [...projectsForm];
+                            updated[idx].technologies = e.target.value.split(',').map(t => t.trim());
+                            setProjectsForm(updated);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setProjectsForm([...projectsForm, { id: `proj_${Date.now()}`, name: 'New Project', shortDesc: '', technologies: [] }])}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    + Add New Project
+                  </button>
+                </div>
+              )}
 
-              <div className="form-group">
-                <label className="form-label">Professional Summary</label>
-                <textarea 
-                  className="form-textarea" 
-                  value={editForm.bio} 
-                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                  style={{ minHeight: '80px' }}
-                />
-              </div>
+              {/* Tab 4: Education */}
+              {activeEditTab === 'education' && (
+                <div className="modal-scroll-section" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                  {educationForm.map((edu, idx) => (
+                    <div key={idx} className="edit-modal-sub-card" style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '1rem', marginBottom: '1rem', backgroundColor: 'var(--bg-surface-hover)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--accent-color)' }}>Education #{idx + 1}</span>
+                        <button 
+                          type="button" 
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                          onClick={() => setEducationForm(educationForm.filter((_, i) => i !== idx))}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Institution / School</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={edu.institution} 
+                          onChange={(e) => {
+                            const updated = [...educationForm];
+                            updated[idx].institution = e.target.value;
+                            setEducationForm(updated);
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Degree / Class</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            value={edu.degree || ''} 
+                            onChange={(e) => {
+                              const updated = [...educationForm];
+                              updated[idx].degree = e.target.value;
+                              setEducationForm(updated);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>CGPA / Grade</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            value={edu.cgpa || ''} 
+                            onChange={(e) => {
+                              const updated = [...educationForm];
+                              updated[idx].cgpa = e.target.value;
+                              setEducationForm(updated);
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Start Year</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            value={edu.startYear || ''} 
+                            onChange={(e) => {
+                              const updated = [...educationForm];
+                              updated[idx].startYear = e.target.value;
+                              setEducationForm(updated);
+                            }}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>End Year</label>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            value={edu.endYear || ''} 
+                            onChange={(e) => {
+                              const updated = [...educationForm];
+                              updated[idx].endYear = e.target.value;
+                              setEducationForm(updated);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setEducationForm([...educationForm, { id: `edu_${Date.now()}`, institution: 'New University', degree: '', cgpa: '', startYear: '', endYear: '' }])}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    + Add New Education
+                  </button>
+                </div>
+              )}
 
-              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
@@ -993,6 +1234,37 @@ export default function ResumeBuilder() {
         .highlight-box {
           border-color: var(--accent-color);
           background-color: var(--accent-light);
+        }
+
+        /* Modal Quick Edit Tab Bar */
+        .modal-tab-bar {
+          display: flex;
+          gap: 0.25rem;
+          border-bottom: 1px solid var(--border-color);
+          padding: 0.75rem 1.5rem 0.25rem 1.5rem;
+          background-color: var(--bg-surface-hover);
+        }
+
+        .modal-tab-btn {
+          background: none;
+          border: none;
+          color: var(--text-secondary);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0.5rem 0.75rem;
+          border-radius: var(--radius-sm);
+          transition: all 0.2s;
+        }
+
+        .modal-tab-btn:hover {
+          background-color: var(--border-color);
+          color: var(--text-primary);
+        }
+
+        .modal-tab-btn.active {
+          background-color: var(--accent-color);
+          color: #ffffff;
         }
 
         /* Global Print Rule Injection */

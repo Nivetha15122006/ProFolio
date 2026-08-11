@@ -154,16 +154,30 @@ async function handleApiRequest(req, res, bodyBuffer) {
       const incomingData = JSON.parse(bodyBuffer.toString());
       const profile = await storage.getProfile(username);
       
-      // Update only personalInfo and socialLinks here (other modules have CRUD endpoints)
       if (incomingData.personalInfo) {
         profile.personalInfo = { ...profile.personalInfo, ...incomingData.personalInfo };
       }
       if (incomingData.socialLinks) {
         profile.socialLinks = incomingData.socialLinks;
       }
+      if (incomingData.education) {
+        profile.education = incomingData.education;
+      }
+      if (incomingData.skills) {
+        profile.skills = incomingData.skills;
+      }
+      if (incomingData.projects) {
+        profile.projects = incomingData.projects;
+      }
+      if (incomingData.certifications) {
+        profile.certifications = incomingData.certifications;
+      }
+      if (incomingData.achievements) {
+        profile.achievements = incomingData.achievements;
+      }
       
       await storage.saveProfile(username, profile);
-      eventEmitter.emit('portfolioUpdated', { username, update: 'personalInfo' });
+      eventEmitter.emit('portfolioUpdated', { username, update: 'all' });
       return sendJSON(res, 200, profile);
     }
     
