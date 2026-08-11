@@ -15,6 +15,7 @@ export default function ResumeBuilder() {
   const [selectedRole, setSelectedRole] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeEditTab, setActiveEditTab] = useState('personal');
+  const [isDirty, setIsDirty] = useState(false);
 
   // Resume configuration settings
   const [config, setConfig] = useState({
@@ -112,10 +113,25 @@ export default function ResumeBuilder() {
       
       const res = await api.profile.update(updatedProfile);
       setProfile(res);
+      setIsDirty(false);
       setToastMsg("Resume details updated successfully!");
       setIsEditModalOpen(false);
     } catch (err) {
       setToastMsg("Failed to update resume details.");
+    }
+  };
+
+  const handleSaveDirectEdits = async () => {
+    try {
+      setLoading(true);
+      const res = await api.profile.update(profile);
+      setProfile(res);
+      setIsDirty(false);
+      setToastMsg("Direct resume changes saved to database!");
+    } catch (err) {
+      setToastMsg("Failed to save direct resume changes.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -169,6 +185,7 @@ export default function ResumeBuilder() {
       // Fetch the actual user's custom details from the database (not blanked out, keeping their real details!)
       const originalData = await api.profile.get();
       setProfile(originalData);
+      setIsDirty(false);
       setConfig(prev => ({ ...prev, template: 'Minimal Professional' }));
       setToastMsg("Loaded your own profile details! You can now edit and print.");
     } catch (err) {
@@ -189,6 +206,7 @@ export default function ResumeBuilder() {
       setLoading(true);
       const res = await api.profile.loadTemplate(roleId);
       setProfile(res.profile);
+      setIsDirty(false);
       setToastMsg(`Loaded ${roleName} sample content and layout!`);
       setSelectedRole(null);
     } catch (err) {
@@ -415,8 +433,23 @@ export default function ResumeBuilder() {
 
         {/* Right Side: Resume interactive preview pane */}
         <div className="builder-preview-col">
+          {isDirty && (
+            <div className="floating-save-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--accent-light)', border: '1px solid var(--accent-color)', borderRadius: 'var(--radius-sm)', padding: '0.75rem 1rem', marginBottom: '1rem', color: 'var(--text-primary)', fontSize: '0.8rem' }}>
+              <span style={{ fontWeight: 600 }}>⚠️ You have unsaved direct resume edits! Click save to sync with database:</span>
+              <button type="button" className="btn btn-primary" onClick={handleSaveDirectEdits} style={{ padding: '4px 12px', fontSize: '0.75rem' }}>
+                Save Edits
+              </button>
+            </div>
+          )}
           <div className="preview-viewport-container">
-            <ResumePreview profile={profile} config={config} />
+            <ResumePreview 
+              profile={profile} 
+              config={config} 
+              onProfileChange={(updated) => {
+                setProfile(updated);
+                setIsDirty(true);
+              }}
+            />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail, Phone, MapPin, Globe } from 'lucide-react';
 import { Github, Linkedin } from './BrandIcons';
 
-export default function ResumePreview({ profile, config }) {
+export default function ResumePreview({ profile, config, onProfileChange }) {
   if (!profile) return <div className="resume-preview-blank">No profile loaded.</div>;
 
   const { personalInfo = {}, socialLinks = [], education = [], skills = [], projects = [], certifications = [], achievements = [] } = profile;
@@ -32,34 +32,190 @@ export default function ResumePreview({ profile, config }) {
 
   const headerAlign = template === 'Clean Academic' ? 'center' : 'left';
 
+  // Inline edit state handlers
+  const updatePersonalInfo = (field, value) => {
+    if (!onProfileChange) return;
+    onProfileChange({
+      ...profile,
+      personalInfo: {
+        ...personalInfo,
+        [field]: value
+      }
+    });
+  };
+
+  const updateEducation = (id, field, value) => {
+    if (!onProfileChange) return;
+    let list = [...education];
+    if (id === 'edu_placeholder') {
+      list = [{
+        id: `edu_${Date.now()}`,
+        institution: 'Click to add University Name',
+        degree: 'Degree Program',
+        fieldOfStudy: 'Field of Study',
+        startYear: '2022',
+        endYear: '2026',
+        cgpa: '9.0',
+        description: ''
+      }];
+      list[0][field] = value;
+    } else {
+      list = list.map(item => item.id === id ? { ...item, [field]: value } : item);
+    }
+    onProfileChange({ ...profile, education: list });
+  };
+
+  const updateProject = (id, field, value) => {
+    if (!onProfileChange) return;
+    let list = [...projects];
+    if (id === 'proj_placeholder') {
+      list = [{
+        id: `proj_${Date.now()}`,
+        name: 'Click to add Project Name',
+        startDate: '2024',
+        endDate: '2024',
+        technologies: ['React', 'Node.js'],
+        shortDesc: 'Click to add project description',
+        detailedDesc: ''
+      }];
+      if (field === 'technologies') {
+        list[0].technologies = value.split(',').map(t => t.trim());
+      } else {
+        list[0][field] = value;
+      }
+    } else {
+      list = list.map(item => {
+        if (item.id === id) {
+          if (field === 'technologies') {
+            return { ...item, technologies: value.split(',').map(t => t.trim()) };
+          }
+          return { ...item, [field]: value };
+        }
+        return item;
+      });
+    }
+    onProfileChange({ ...profile, projects: list });
+  };
+
+  const updateSkillsText = (category, value) => {
+    if (!onProfileChange) return;
+    const otherSkills = skills.filter(s => s.category !== category);
+    const parsedSkills = value.split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .map((name, i) => ({
+        id: `skill_${Date.now()}_${i}`,
+        name,
+        category,
+        level: 'Expert'
+      }));
+    onProfileChange({ ...profile, skills: [...otherSkills, ...parsedSkills] });
+  };
+
   // Section Renders
   const renderSummary = () => {
-    if (!visibleSections.summary || !personalInfo.bio) return null;
+    if (!visibleSections.summary) return null;
     return (
       <section className="resume-sec" style={{ marginBottom: densityStyles.margin }}>
         <h4 className="sec-heading" style={{ borderBottomColor: accentColor, color: template === 'Modern Developer' ? accentColor : '#111827' }}>Professional Summary</h4>
-        <p className="sec-body" style={{ lineHeight: densityStyles.lineSpacing }}>{personalInfo.bio}</p>
+        <p 
+          className="sec-body edit-highlight" 
+          contentEditable={!!onProfileChange}
+          suppressContentEditableWarning
+          onBlur={(e) => updatePersonalInfo('bio', e.target.innerText.trim())}
+          style={{ lineHeight: densityStyles.lineSpacing }}
+        >
+          {personalInfo.bio || 'Click here to write your professional summary...'}
+        </p>
       </section>
     );
   };
 
   const renderEducation = () => {
-    if (!visibleSections.education || education.length === 0) return null;
+    if (!visibleSections.education) return null;
+
+    const listToRender = education.length > 0 ? education : [{
+      id: 'edu_placeholder',
+      institution: 'University / High School Name (Click to edit)',
+      degree: 'B.Tech / Class XII',
+      fieldOfStudy: 'Computer Science / Science',
+      startYear: '2022',
+      endYear: '2026',
+      cgpa: '9.0',
+      description: 'Add details...'
+    }];
+
     return (
       <section className="resume-sec" style={{ marginBottom: densityStyles.margin }}>
         <h4 className="sec-heading" style={{ borderBottomColor: accentColor, color: template === 'Modern Developer' ? accentColor : '#111827' }}>Education</h4>
         <div className="sec-list" style={{ gap: densityStyles.gap }}>
-          {education.map(edu => (
+          {listToRender.map(edu => (
             <div key={edu.id} className="sec-item">
               <div className="item-head">
-                <span className="bold-text">{edu.institution}</span>
-                <span className="meta-text">{edu.startYear} – {edu.endYear}</span>
+                <span 
+                  className="bold-text edit-highlight"
+                  contentEditable={!!onProfileChange}
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateEducation(edu.id, 'institution', e.target.innerText.trim())}
+                >
+                  {edu.institution}
+                </span>
+                <span className="meta-text">
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateEducation(edu.id, 'startYear', e.target.innerText.trim())}
+                  >
+                    {edu.startYear}
+                  </span>
+                  <span> – </span>
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateEducation(edu.id, 'endYear', e.target.innerText.trim())}
+                  >
+                    {edu.endYear}
+                  </span>
+                </span>
               </div>
               <div className="item-sub">
-                <span>{edu.degree} in {edu.fieldOfStudy}</span>
-                {edu.cgpa && <span className="bold-text">CGPA: {edu.cgpa}</span>}
+                <span>
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateEducation(edu.id, 'degree', e.target.innerText.trim())}
+                  >
+                    {edu.degree}
+                  </span>
+                  <span> in </span>
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateEducation(edu.id, 'fieldOfStudy', e.target.innerText.trim())}
+                  >
+                    {edu.fieldOfStudy}
+                  </span>
+                </span>
+                {edu.cgpa && (
+                  <span className="bold-text">
+                    CGPA: <span 
+                      contentEditable={!!onProfileChange} 
+                      suppressContentEditableWarning 
+                      onBlur={(e) => updateEducation(edu.id, 'cgpa', e.target.innerText.trim())}
+                    >
+                      {edu.cgpa}
+                    </span>
+                  </span>
+                )}
               </div>
-              {edu.description && <p className="item-desc">{edu.description}</p>}
+              <p 
+                className="item-desc edit-highlight"
+                contentEditable={!!onProfileChange}
+                suppressContentEditableWarning
+                onBlur={(e) => updateEducation(edu.id, 'description', e.target.innerText.trim())}
+              >
+                {edu.description || 'Description details...'}
+              </p>
             </div>
           ))}
         </div>
@@ -68,53 +224,113 @@ export default function ResumePreview({ profile, config }) {
   };
 
   const renderSkills = () => {
-    if (!visibleSections.skills || skills.length === 0) return null;
+    if (!visibleSections.skills) return null;
     
     // Group skills by category
-    const categories = Array.from(new Set(skills.map(s => s.category)));
+    const categories = skills.length > 0 ? Array.from(new Set(skills.map(s => s.category))) : ['Technical Skills'];
     
     return (
       <section className="resume-sec" style={{ marginBottom: densityStyles.margin }}>
         <h4 className="sec-heading" style={{ borderBottomColor: accentColor, color: template === 'Modern Developer' ? accentColor : '#111827' }}>Skills</h4>
         <div className="skills-line-list" style={{ gap: '0.375rem' }}>
-          {categories.map(cat => (
-            <div key={cat} className="skill-cat-row" style={{ lineHeight: densityStyles.lineSpacing }}>
-              <span className="bold-text" style={{ fontSize: '0.85rem' }}>{cat}: </span>
-              <span className="skill-values">
-                {skills.filter(s => s.category === cat).map(s => `${s.name} (${s.level})`).join(', ')}
-              </span>
-            </div>
-          ))}
+          {categories.map(cat => {
+            const catSkills = skills.filter(s => s.category === cat);
+            const skillsStr = catSkills.length > 0 ? catSkills.map(s => s.name).join(', ') : 'React, Node.js, Python, Click to edit skills...';
+            return (
+              <div key={cat} className="skill-cat-row" style={{ lineHeight: densityStyles.lineSpacing }}>
+                <span className="bold-text" style={{ fontSize: '0.85rem' }}>{cat}: </span>
+                <span 
+                  className="skill-values edit-highlight"
+                  contentEditable={!!onProfileChange}
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateSkillsText(cat, e.target.innerText.trim())}
+                >
+                  {skillsStr}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </section>
     );
   };
 
   const renderProjects = () => {
-    if (!visibleSections.projects || projects.length === 0) return null;
+    if (!visibleSections.projects) return null;
+
+    const listToRender = projects.length > 0 ? projects : [{
+      id: 'proj_placeholder',
+      name: 'Project Title (Click to edit)',
+      startDate: '2024',
+      endDate: '2024',
+      technologies: ['React', 'Node.js'],
+      shortDesc: 'A brief sentence summarizing the project.',
+      detailedDesc: 'Click here to add project achievements and details.'
+    }];
+
     return (
       <section className="resume-sec" style={{ marginBottom: densityStyles.margin }}>
         <h4 className="sec-heading" style={{ borderBottomColor: accentColor, color: template === 'Modern Developer' ? accentColor : '#111827' }}>Projects</h4>
         <div className="sec-list" style={{ gap: densityStyles.gap }}>
-          {projects.map(proj => (
+          {listToRender.map(proj => (
             <div key={proj.id} className="sec-item">
               <div className="item-head">
-                <span className="bold-text">{proj.name}</span>
-                <span className="meta-text">{proj.startDate} – {proj.endDate || 'Present'}</span>
+                <span 
+                  className="bold-text edit-highlight"
+                  contentEditable={!!onProfileChange}
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateProject(proj.id, 'name', e.target.innerText.trim())}
+                >
+                  {proj.name}
+                </span>
+                <span className="meta-text">
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateProject(proj.id, 'startDate', e.target.innerText.trim())}
+                  >
+                    {proj.startDate}
+                  </span>
+                  <span> – </span>
+                  <span 
+                    contentEditable={!!onProfileChange} 
+                    suppressContentEditableWarning 
+                    onBlur={(e) => updateProject(proj.id, 'endDate', e.target.innerText.trim())}
+                  >
+                    {proj.endDate || 'Present'}
+                  </span>
+                </span>
               </div>
-              {proj.technologies && (
-                <div className="item-tech-tags" style={{ color: accentColor }}>
-                  {proj.technologies.join(' | ')}
-                </div>
-              )}
+              
+              <div 
+                className="item-tech-tags edit-highlight" 
+                style={{ color: accentColor }}
+                contentEditable={!!onProfileChange}
+                suppressContentEditableWarning
+                onBlur={(e) => updateProject(proj.id, 'technologies', e.target.innerText.trim())}
+              >
+                {Array.isArray(proj.technologies) ? proj.technologies.join(', ') : ''}
+              </div>
+              
               <p className="item-desc" style={{ lineHeight: densityStyles.lineSpacing }}>
-                <span className="bold-text">{proj.shortDesc} </span>
-                {proj.detailedDesc}
+                <span 
+                  className="bold-text edit-highlight"
+                  contentEditable={!!onProfileChange}
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateProject(proj.id, 'shortDesc', e.target.innerText.trim())}
+                >
+                  {proj.shortDesc}
+                </span>
+                <span> </span>
+                <span 
+                  className="edit-highlight"
+                  contentEditable={!!onProfileChange}
+                  suppressContentEditableWarning
+                  onBlur={(e) => updateProject(proj.id, 'detailedDesc', e.target.innerText.trim())}
+                >
+                  {proj.detailedDesc || 'Detailed specifications...'}
+                </span>
               </p>
-              <div className="item-links">
-                {proj.githubUrl && <span className="item-link">GitHub: {proj.githubUrl}</span>}
-                {proj.liveUrl && <span className="item-link">Demo: {proj.liveUrl}</span>}
-              </div>
             </div>
           ))}
         </div>
@@ -193,27 +409,67 @@ export default function ResumePreview({ profile, config }) {
 
       {/* Header Info */}
       <header className="resume-header" style={{ textAlign: headerAlign }}>
-        <h1 className="user-name" style={{ color: template === 'Clean Academic' ? '#111827' : (template === 'Modern Developer' ? accentColor : '#1f2937') }}>
+        <h1 
+          className="user-name edit-highlight" 
+          contentEditable={!!onProfileChange}
+          suppressContentEditableWarning
+          onBlur={(e) => updatePersonalInfo('fullName', e.target.innerText.trim())}
+          style={{ color: template === 'Clean Academic' ? '#111827' : (template === 'Modern Developer' ? accentColor : '#1f2937') }}
+        >
           {personalInfo.fullName || 'Your Full Name'}
         </h1>
-        <h2 className="user-title" style={{ color: accentColor }}>
+        <h2 
+          className="user-title edit-highlight" 
+          contentEditable={!!onProfileChange}
+          suppressContentEditableWarning
+          onBlur={(e) => updatePersonalInfo('title', e.target.innerText.trim())}
+          style={{ color: accentColor }}
+        >
           {personalInfo.title || 'Professional Title'}
         </h2>
         
         {/* Contact links */}
         <div className="contact-links-row" style={{ justifyContent: headerAlign === 'center' ? 'center' : 'flex-start' }}>
-          {personalInfo.email && (
-            <div className="link-item"><Mail size={12}/> <span>{personalInfo.email}</span></div>
-          )}
-          {personalInfo.phone && (
-            <div className="link-item"><Phone size={12}/> <span>{personalInfo.phone}</span></div>
-          )}
-          {personalInfo.location && (
-            <div className="link-item"><MapPin size={12}/> <span>{personalInfo.location}</span></div>
-          )}
-          {personalInfo.website && (
-            <div className="link-item"><Globe size={12}/> <span>{personalInfo.website}</span></div>
-          )}
+          <div className="link-item">
+            <Mail size={12}/> 
+            <span 
+              contentEditable={!!onProfileChange} 
+              suppressContentEditableWarning 
+              onBlur={(e) => updatePersonalInfo('email', e.target.innerText.trim())}
+            >
+              {personalInfo.email || 'email@domain.com'}
+            </span>
+          </div>
+          <div className="link-item">
+            <Phone size={12}/> 
+            <span 
+              contentEditable={!!onProfileChange} 
+              suppressContentEditableWarning 
+              onBlur={(e) => updatePersonalInfo('phone', e.target.innerText.trim())}
+            >
+              {personalInfo.phone || '+1234567890'}
+            </span>
+          </div>
+          <div className="link-item">
+            <MapPin size={12}/> 
+            <span 
+              contentEditable={!!onProfileChange} 
+              suppressContentEditableWarning 
+              onBlur={(e) => updatePersonalInfo('location', e.target.innerText.trim())}
+            >
+              {personalInfo.location || 'City, Country'}
+            </span>
+          </div>
+          <div className="link-item">
+            <Globe size={12}/> 
+            <span 
+              contentEditable={!!onProfileChange} 
+              suppressContentEditableWarning 
+              onBlur={(e) => updatePersonalInfo('website', e.target.innerText.trim())}
+            >
+              {personalInfo.website || 'website.com'}
+            </span>
+          </div>
         </div>
 
         {/* Social Link Row */}
@@ -236,13 +492,28 @@ export default function ResumePreview({ profile, config }) {
         .resume-paper-page {
           background-color: #ffffff;
           box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-          min-height: 297mm; /* Standard A4 height proportional ratio */
+          min-height: 297mm;
           width: 100%;
           max-width: 210mm;
           margin: 0 auto;
           box-sizing: border-box;
           position: relative;
           text-align: left;
+        }
+
+        /* Direct edit visual feedback hint */
+        .edit-highlight:hover {
+          background-color: rgba(99, 102, 241, 0.05);
+          outline: 1px dashed rgba(99, 102, 241, 0.3);
+          border-radius: 2px;
+          cursor: text;
+        }
+
+        .edit-highlight:focus {
+          background-color: rgba(99, 102, 241, 0.08);
+          outline: 1.5px solid var(--accent-color);
+          border-radius: 2px;
+          box-shadow: 0 0 4px rgba(99, 102, 241, 0.2);
         }
 
         .modern-strip {
@@ -320,6 +591,7 @@ export default function ResumePreview({ profile, config }) {
         .sec-item {
           display: flex;
           flex-direction: column;
+          margin-bottom: 0.5rem;
         }
 
         .item-head {
