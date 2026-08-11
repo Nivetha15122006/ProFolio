@@ -195,10 +195,20 @@ export default function ResumeBuilder() {
     }
   };
 
-  const handleUseTemplateLayoutOnly = (layout) => {
-    setConfig(prev => ({ ...prev, template: layout }));
-    setToastMsg(`Activated layout: ${layout} using your profile details!`);
-    setSelectedRole(null);
+  const handleUseTemplateLayoutOnly = async (layout) => {
+    try {
+      setLoading(true);
+      const originalData = await api.profile.get();
+      setProfile(originalData);
+      setIsDirty(false);
+      setConfig(prev => ({ ...prev, template: layout }));
+      setToastMsg(`Activated layout: ${layout} using your profile details!`);
+    } catch (err) {
+      setToastMsg("Failed to reload your profile details.");
+    } finally {
+      setLoading(false);
+      setSelectedRole(null);
+    }
   };
 
   const handleLoadSampleContent = async (roleId, roleName) => {
