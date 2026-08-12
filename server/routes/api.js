@@ -19,9 +19,9 @@ function sendJSON(res, statusCode, data) {
 function getAuthenticatedUser(req) {
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.split(' ')[1];
+    return authHeader.substring(7).trim();
   }
-  return "arjun"; // Default fallback user for easy testing
+  return null;
 }
 
 // Router handler called by server.js
@@ -44,6 +44,13 @@ async function handleApiRequest(req, res, bodyBuffer) {
   }
   
   const username = getAuthenticatedUser(req);
+  
+  // Enforce authentication on all routes except auth endpoints and public showcase
+  const isAuthRoute = pathname.startsWith('/api/auth/');
+  const isPublicRoute = pathname === '/api/public/profile';
+  if (!username && !isAuthRoute && !isPublicRoute) {
+    return sendJSON(res, 401, { error: "Unauthorized. Please log in." });
+  }
   
   try {
     // ----------------------------------------------------

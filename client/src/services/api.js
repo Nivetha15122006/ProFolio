@@ -27,6 +27,10 @@ async function request(endpoint, options = {}) {
   const data = await response.json().catch(() => ({}));
   
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('devportfolio-user');
+      window.location.href = '/login';
+    }
     throw new Error(data.error || `HTTP error! status: ${response.status}`);
   }
   
