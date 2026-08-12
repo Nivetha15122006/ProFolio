@@ -316,31 +316,56 @@ export default function PortfolioPreview({ profile, config }) {
           text-align: left;
           transition: all 0.3s ease;
           
-          /* Colors setup */
+          /* Colors setup (Light Theme) */
           --p-bg: #f8fafc;
           --p-surface: #ffffff;
           --p-border: #e2e8f0;
-          --p-text: #1e293b;
-          --p-muted: #64748b;
+          --p-text: #0f172a;
+          --p-muted: #475569;
           --p-accent: #4f46e5;
           --p-accent-hover: #4338ca;
         }
 
-        /* Dark Theme overrides */
+        /* Dark Theme overrides (Vibrant & High-Contrast) */
         .portfolio-theme-dark {
-          --p-bg: #0f172a;
-          --p-surface: #1e293b;
-          --p-border: #334155;
-          --p-text: #f1f5f9;
-          --p-muted: #94a3b8;
-          --p-accent: #6366f1;
-          --p-accent-hover: #4f46e5;
+          --p-bg: #0a0e1a;
+          --p-surface: #161e2f;
+          --p-border: #2d3b55;
+          --p-text: #ffffff;
+          --p-muted: #cbd5e1;
+          --p-accent: #818cf8;
+          --p-accent-hover: #a5b4fc;
         }
 
         /* Applying theme styles */
         .p-viewport-wrapper {
           background-color: var(--p-bg);
           color: var(--p-text);
+        }
+
+        /* Enforce theme color hierarchy over global resets */
+        .p-viewport-wrapper h1,
+        .p-viewport-wrapper h2,
+        .p-viewport-wrapper h3,
+        .p-viewport-wrapper h4,
+        .p-viewport-wrapper h5,
+        .p-viewport-wrapper h6 {
+          color: var(--p-text) !important;
+        }
+
+        .p-cert-name,
+        .p-timeline-title,
+        .soc-title {
+          color: var(--p-text) !important;
+        }
+
+        .p-cert-issuer,
+        .p-cert-meta,
+        .p-cert-meta span,
+        .p-timeline-sub,
+        .p-timeline-desc,
+        .contact-prompt {
+          color: var(--p-muted) !important;
         }
 
         /* Brand Navbar */
