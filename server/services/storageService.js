@@ -158,10 +158,11 @@ async function saveProfile(username, profile) {
       const existing = await Profile.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
       const key = existing ? existing.username : username;
       
+      const { _id, __v, ...profileData } = profile;
       await Profile.findOneAndUpdate(
         { username: { $regex: new RegExp(`^${username}$`, 'i') } },
-        { ...profile, username: key },
-        { upsert: true, new: true }
+        { ...profileData, username: key },
+        { upsert: true, returnDocument: 'after' }
       );
       return;
     } catch (err) {
@@ -207,10 +208,11 @@ async function savePortfolio(username, portfolio) {
       const existing = await Portfolio.findOne({ username: { $regex: new RegExp(`^${username}$`, 'i') } });
       const key = existing ? existing.username : username;
       
+      const { _id, __v, ...portfolioData } = portfolio;
       await Portfolio.findOneAndUpdate(
         { username: { $regex: new RegExp(`^${username}$`, 'i') } },
-        { ...portfolio, username: key },
-        { upsert: true }
+        { ...portfolioData, username: key },
+        { upsert: true, returnDocument: 'after' }
       );
       return;
     } catch (err) {

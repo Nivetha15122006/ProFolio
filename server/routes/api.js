@@ -72,7 +72,7 @@ async function handleApiRequest(req, res, bodyBuffer) {
       const currentProfile = await storage.getProfile(username);
       const templateNames = ["Jane Doe", "Sarah Chen", "Sophia Patel", "Marcus Aurelius", "Emily Johnson", "Arjun Patel", "Arjun"];
       const isSample = templateNames.includes(currentProfile.personalInfo?.fullName);
-      if (!isSample && currentProfile.personalInfo?.fullName && currentProfile.personalInfo.fullName !== username) {
+      if (!isSample && currentProfile.personalInfo?.fullName) {
         await storage.saveProfile(`backup_${username}`, currentProfile);
       }
 
