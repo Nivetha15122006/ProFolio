@@ -208,6 +208,12 @@ export const api = {
         method: 'POST',
         body: formData
       });
+    },
+    enhanceText(type, text) {
+      return request('/resume/ai-enhance', {
+        method: 'POST',
+        body: JSON.stringify({ type, text })
+      });
     }
   },
   

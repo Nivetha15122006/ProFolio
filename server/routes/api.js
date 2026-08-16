@@ -616,6 +616,58 @@ async function handleApiRequest(req, res, bodyBuffer) {
         filename: filePart.filename
       });
     }
+
+    if (pathname === '/api/resume/ai-enhance' && method === 'POST') {
+      const { type, text } = JSON.parse(bodyBuffer.toString());
+      if (!text) {
+        return sendJSON(res, 400, { error: "Text payload is required." });
+      }
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      let enhancedText = "";
+      let isAiPowered = false;
+      
+      if (apiKey) {
+        try {
+          const prompt = type === 'bio'
+            ? `You are an expert resume writer. Rewrite the following professional summary bio to make it highly engaging, standard for top tech companies, and highlight key strengths. Keep it concise, professional, and matching a first-person or third-person standard narrative (do not include headings or extra text, just output the enhanced paragraph). Maximum 3-4 sentences. Original text: "${text}"`
+            : `You are an expert technical resume writer. Rewrite the following project description to emphasize measurable impact, technologies used, and professional outcome. Keep it concise, and output exactly 2 to 3 bullet points using standard format (do not include markdown headings, just return the list of bullet points). Original text: "${text}"`;
+            
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: prompt }
+                  ]
+                }
+              ]
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+              enhancedText = data.candidates[0].content.parts[0].text.trim();
+              isAiPowered = true;
+            }
+          }
+        } catch (err) {
+          console.error("[Gemini API call failed, falling back to heuristics]", err);
+        }
+      }
+      
+      if (!isAiPowered) {
+        enhancedText = runHeuristicOptimizer(type, text);
+      }
+      
+      eventEmitter.emit('portfolioUpdated', { username, update: 'aiEnhanced' });
+      return sendJSON(res, 200, { enhancedText, isAiPowered });
+    }
     
     // Path not found
     return sendJSON(res, 404, { error: `Endpoint not found: ${method} ${pathname}` });
@@ -624,6 +676,69 @@ async function handleApiRequest(req, res, bodyBuffer) {
     console.error(`[Server API Error]`, error);
     return sendJSON(res, 500, { error: error.message || "Internal server error." });
   }
+}
+
+function runHeuristicOptimizer(type, text) {
+  let cleaned = text.trim();
+  
+  if (type === 'bio') {
+    if (cleaned.length < 30) {
+      return `Results-driven Software Engineer with a passion for building high-performance web applications. Experienced in utilizing modern javascript libraries and frameworks to build scalable frontend architectures and robust backend services.`;
+    }
+    
+    let optimized = cleaned
+      .replace(/\b(helped build|worked on|helped with)\b/gi, 'spearheaded the engineering of')
+      .replace(/\b(made|created|built)\b/gi, 'architected and deployed')
+      .replace(/\b(handled|did|took care of)\b/gi, 'orchestrated')
+      .replace(/\b(good at|know)\b/gi, 'proficient in utilizing');
+      
+    if (!optimized.includes('%') && !optimized.toLowerCase().includes('latency')) {
+      optimized += " Dedicated to optimizing component rendering pathways to improve rendering latency by 30% and boost lighthouse audit scores.";
+    }
+    return optimized;
+  }
+  
+  if (type === 'project') {
+    if (cleaned.length < 20) {
+      return `• Architected and developed the application interface utilizing modern tech stack components.\n• Engineered backend queries to optimize response delivery, reducing load latency by 25%.\n• Maintained continuous integration pipelines to facilitate smooth team deployment cycles.`;
+    }
+    
+    let bulletPoints = [];
+    const sentences = cleaned.split(/[.•\n]/).map(s => s.trim()).filter(s => s.length > 8);
+    
+    if (sentences.length > 0) {
+      sentences.forEach((sentence, idx) => {
+        let enhanced = sentence;
+        if (/^(i |we )?(helped|worked|did|made|created|built|handled)/i.test(enhanced)) {
+          enhanced = enhanced.replace(/^(i |we )?(helped build|worked on|helped with)/i, 'Spearheaded the engineering of')
+                             .replace(/^(i |we )?(made|created|built)/i, 'Architected and deployed')
+                             .replace(/^(i |we )?(handled|did|took care of)/i, 'Orchestrated');
+        } else {
+          enhanced = enhanced.charAt(0).toUpperCase() + enhanced.slice(1);
+        }
+        
+        if (idx === 0 && !enhanced.includes('%')) {
+          enhanced += ", increasing page speeds and system efficiency metrics by 25%";
+        }
+        if (idx === 1 && !enhanced.includes('latency')) {
+          enhanced += ", reducing query latency by 30% and securing concurrent user requests";
+        }
+        
+        bulletPoints.push(`• ${enhanced}.`);
+      });
+    }
+    
+    if (bulletPoints.length === 0) {
+      bulletPoints.push(`• Engineered the project flow and structure from scratch, deploying key features.`);
+      bulletPoints.push(`• Optimized code performance to decrease resource consumption metrics by 20%.`);
+    } else if (bulletPoints.length === 1) {
+      bulletPoints.push(`• Deployed secure endpoints to improve data transit safety, reducing load overhead by 15%.`);
+    }
+    
+    return bulletPoints.slice(0, 3).join('\n');
+  }
+  
+  return cleaned;
 }
 
 module.exports = {

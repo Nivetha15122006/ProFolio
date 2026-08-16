@@ -16,6 +16,9 @@ export default function ResumeBuilder() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeEditTab, setActiveEditTab] = useState('personal');
   const [isDirty, setIsDirty] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiLoadingField, setAiLoadingField] = useState(null);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
 
   // Resume configuration settings
   const [config, setConfig] = useState({
@@ -238,6 +241,56 @@ export default function ResumeBuilder() {
       setToastMsg("Failed to replace template content.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAiEnhanceBio = async () => {
+    if (!editForm.bio) {
+      setToastMsg("Please enter some summary text first!");
+      return;
+    }
+    setAiLoading(true);
+    setAiLoadingField('bio');
+    setAiSuggestion(null);
+    try {
+      const res = await api.resume.enhanceText('bio', editForm.bio);
+      setAiSuggestion({
+        type: 'bio',
+        original: editForm.bio,
+        suggestion: res.enhancedText
+      });
+      setToastMsg("AI suggestion generated!");
+    } catch (err) {
+      setToastMsg("AI enhancement failed.");
+    } finally {
+      setAiLoading(false);
+      setAiLoadingField(null);
+    }
+  };
+
+  const handleAiEnhanceProject = async (index) => {
+    const projectText = projectsForm[index].shortDesc;
+    if (!projectText) {
+      setToastMsg("Please enter some project description first!");
+      return;
+    }
+    setAiLoading(true);
+    setAiLoadingField(`project-${index}`);
+    setAiSuggestion(null);
+    try {
+      const res = await api.resume.enhanceText('project', projectText);
+      setAiSuggestion({
+        type: 'project',
+        index: index,
+        original: projectText,
+        suggestion: res.enhancedText
+      });
+      setToastMsg("AI suggestion generated!");
+    } catch (err) {
+      setToastMsg("AI enhancement failed.");
+    } finally {
+      setAiLoading(false);
+      setAiLoadingField(null);
     }
   };
 
@@ -593,7 +646,17 @@ export default function ResumeBuilder() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Professional Summary</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="form-label">Professional Summary</label>
+                      <button 
+                        type="button" 
+                        onClick={handleAiEnhanceBio} 
+                        disabled={aiLoading}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                      >
+                        ✨ AI Optimize
+                      </button>
+                    </div>
                     <textarea 
                       className="form-textarea" 
                       value={editForm.bio} 
@@ -601,6 +664,46 @@ export default function ResumeBuilder() {
                       style={{ minHeight: '80px' }}
                     />
                   </div>
+
+                  {aiLoading && aiLoadingField === 'bio' && (
+                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--accent-light)', color: 'var(--text-primary)', border: '1px solid var(--accent-color)', borderRadius: '6px', marginTop: '0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div className="ai-spinner-animate" style={{ width: '12px', height: '12px', border: '2px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                      <span>Analyzing summary and rewriting...</span>
+                    </div>
+                  )}
+
+                  {aiSuggestion && aiSuggestion.type === 'bio' && (
+                    <div className="ai-suggestion-box" style={{ marginTop: '0.5rem', border: '1px solid var(--accent-color)', borderRadius: '6px', backgroundColor: 'var(--bg-surface-hover)', padding: '0.75rem', color: 'var(--text-primary)' }}>
+                      <h4 style={{ fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.35rem', color: 'var(--accent-color)' }}>
+                        <span>✨ Gemini AI Recommendation</span>
+                      </h4>
+                      <div style={{ fontSize: '0.7rem', lineHeight: '1.4', fontStyle: 'italic', backgroundColor: 'var(--bg-app)', border: '1px dashed var(--border-color)', padding: '0.5rem', borderRadius: '4px', whiteSpace: 'pre-line', marginBottom: '0.5rem' }}>
+                        {aiSuggestion.suggestion}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary" 
+                          onClick={() => setAiSuggestion(null)}
+                          style={{ fontSize: '0.65rem', padding: '2px 8px' }}
+                        >
+                          Dismiss
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          onClick={() => {
+                            setEditForm({ ...editForm, bio: aiSuggestion.suggestion });
+                            setAiSuggestion(null);
+                            setToastMsg("AI summary suggestion applied!");
+                          }}
+                          style={{ fontSize: '0.65rem', padding: '2px 8px' }}
+                        >
+                          Accept
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -653,7 +756,17 @@ export default function ResumeBuilder() {
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Description</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem' }}>Description</label>
+                          <button 
+                            type="button" 
+                            onClick={() => handleAiEnhanceProject(idx)} 
+                            disabled={aiLoading}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-color)', fontSize: '0.7rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                          >
+                            ✨ AI Optimize
+                          </button>
+                        </div>
                         <textarea 
                           className="form-textarea" 
                           value={proj.shortDesc} 
@@ -665,6 +778,48 @@ export default function ResumeBuilder() {
                           style={{ minHeight: '60px' }}
                         />
                       </div>
+
+                      {aiLoading && aiLoadingField === `project-${idx}` && (
+                        <div style={{ padding: '0.75rem', backgroundColor: 'var(--accent-light)', color: 'var(--text-primary)', border: '1px solid var(--accent-color)', borderRadius: '6px', marginTop: '0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div className="ai-spinner-animate" style={{ width: '12px', height: '12px', border: '2px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                          <span>AI is formatting and adding metrics using STAR...</span>
+                        </div>
+                      )}
+
+                      {aiSuggestion && aiSuggestion.type === 'project' && aiSuggestion.index === idx && (
+                        <div className="ai-suggestion-box" style={{ marginTop: '0.5rem', border: '1px solid var(--accent-color)', borderRadius: '6px', backgroundColor: 'var(--bg-surface-hover)', padding: '0.75rem', color: 'var(--text-primary)' }}>
+                          <h4 style={{ fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.35rem', color: 'var(--accent-color)' }}>
+                            <span>✨ Gemini AI Recommendation</span>
+                          </h4>
+                          <div style={{ fontSize: '0.7rem', lineHeight: '1.4', fontStyle: 'italic', backgroundColor: 'var(--bg-app)', border: '1px dashed var(--border-color)', padding: '0.5rem', borderRadius: '4px', whiteSpace: 'pre-line', marginBottom: '0.5rem' }}>
+                            {aiSuggestion.suggestion}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button 
+                              type="button" 
+                              className="btn btn-secondary" 
+                              onClick={() => setAiSuggestion(null)}
+                              style={{ fontSize: '0.65rem', padding: '2px 8px' }}
+                            >
+                              Dismiss
+                            </button>
+                            <button 
+                              type="button" 
+                              className="btn btn-primary" 
+                              onClick={() => {
+                                const updated = [...projectsForm];
+                                updated[idx].shortDesc = aiSuggestion.suggestion;
+                                setProjectsForm(updated);
+                                setAiSuggestion(null);
+                                setToastMsg("AI project suggestion applied!");
+                              }}
+                              style={{ fontSize: '0.65rem', padding: '2px 8px' }}
+                            >
+                              Accept
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="form-group">
                         <label className="form-label" style={{ fontSize: '0.75rem' }}>Technologies (Comma-separated)</label>
                         <input 
@@ -1178,6 +1333,14 @@ export default function ResumeBuilder() {
         @keyframes modalFade {
           from { opacity: 0; transform: scale(0.96) translateY(8px); }
           to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .ai-spinner-animate {
+          animation: ai-spin 0.8s linear infinite;
+        }
+
+        @keyframes ai-spin {
+          to { transform: rotate(360deg); }
         }
 
         .modal-header {
