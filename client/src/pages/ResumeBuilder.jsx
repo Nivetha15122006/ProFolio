@@ -596,48 +596,38 @@ export default function ResumeBuilder() {
           {editorMode === 'raw' && (
             <div className="card control-group-card">
               <h3 className="control-card-heading">
-                <FileText size={16} />
-                <span>Raw Resume Writer</span>
+                <Sparkles size={16} />
+                <span>AI Resume Copilot</span>
               </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
-                Write or copy-paste your details here in plain text. Click AI Compile to instantly structure your resume!
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+                Type or paste your information in the blank document sheet on the right. Once ready, click compile below to instantly format and structure your resume!
               </p>
               
-              <div className="form-group">
-                <textarea
-                  className="form-textarea"
-                  value={rawText}
-                  onChange={(e) => setRawText(e.target.value)}
-                  style={{ minHeight: '350px', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: '1.5', padding: '0.75rem', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
-                  placeholder={`[Name] Your Name\n[Title] Software Engineer\n\nSkills: React, Node.js, Python\n\nProjects:\n- E-Commerce: Built fullstack storefront...\n\nEducation:\n- ABC University: Computer Science Degree...`}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <button
                   type="button"
                   className="p-btn p-btn-primary"
                   onClick={handleAiStructurize}
                   disabled={aiLoading}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem' }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.75rem', fontWeight: 600, borderRadius: '4px' }}
                 >
                   <Sparkles size={14} />
-                  {aiLoading && aiLoadingField === 'structurize' ? 'AI Compiling...' : '✨ AI Compile & Format'}
+                  {aiLoading && aiLoadingField === 'structurize' ? 'AI Formatting...' : '✨ AI Compile & Format'}
                 </button>
                 <button
                   type="button"
                   className="p-btn p-btn-secondary"
                   onClick={() => setRawText('')}
-                  style={{ width: '100%', padding: '0.6rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px' }}
                 >
-                  Clear Pad
+                  Clear Document
                 </button>
               </div>
 
               {aiLoading && aiLoadingField === 'structurize' && (
-                <div style={{ padding: '0.75rem', backgroundColor: 'var(--accent-light)', color: 'var(--text-primary)', border: '1px solid var(--accent-color)', borderRadius: '6px', marginTop: '1rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ padding: '0.75rem', backgroundColor: 'var(--accent-light)', color: 'var(--text-primary)', border: '1px solid var(--accent-color)', borderRadius: '6px', marginTop: '1.25rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <div className="ai-spinner-animate" style={{ width: '12px', height: '12px', border: '2px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
-                  <span>Gemini Copilot is parsing sections and database tables...</span>
+                  <span>Gemini is reading your Word document and generating template records...</span>
                 </div>
               )}
             </div>
@@ -663,16 +653,38 @@ export default function ResumeBuilder() {
               </button>
             </div>
           )}
-          <div className="preview-viewport-container">
-            <ResumePreview 
-              profile={profile} 
-              config={config} 
-              onProfileChange={(updated) => {
-                setProfile(updated);
-                setIsDirty(true);
-                setShowingSampleFor(null);
-              }}
-            />
+          <div className="preview-viewport-container" style={editorMode === 'raw' ? { backgroundColor: 'var(--bg-app)', padding: '2rem 1rem' } : {}}>
+            {editorMode === 'visual' ? (
+              <ResumePreview 
+                profile={profile} 
+                config={config} 
+                onProfileChange={(updated) => {
+                  setProfile(updated);
+                  setIsDirty(true);
+                  setShowingSampleFor(null);
+                }}
+              />
+            ) : (
+              <div className="word-doc-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', alignItems: 'center' }}>
+                <div className="word-doc-header" style={{ width: '100%', maxWidth: '820px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-surface-hover)', padding: '0.6rem 1.25rem', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '0.8rem', color: 'var(--text-secondary)', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <FileText size={14} className="accent-text" />
+                    <span style={{ fontWeight: 600 }}>raw_resume_scratchpad.txt</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 600 }}>📝 Plain Text Mode</span>
+                </div>
+                
+                <div className="word-doc-sheet" style={{ width: '100%', maxWidth: '820px', backgroundColor: '#ffffff', minHeight: '842px', padding: '3.5rem', borderRadius: '4px', boxShadow: '0 10px 30px rgba(0, 0, 0, 0.06), 0 1px 8px rgba(0, 0, 0, 0.03)', border: '1px solid var(--border-color)', boxSizing: 'border-box' }}>
+                  <textarea
+                    className="word-doc-textarea"
+                    value={rawText}
+                    onChange={(e) => setRawText(e.target.value)}
+                    style={{ width: '100%', minHeight: '800px', border: 'none', outline: 'none', resize: 'none', background: 'transparent', fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif', fontSize: '1rem', lineHeight: '1.6', color: '#1e293b', padding: 0 }}
+                    placeholder={`[Full Name]\n[Professional Title]\n[Email] | [Phone] | [Location]\n\nProfessional Summary:\nWrite your career bio here...\n\nSkills:\nReact, Node.js, Python, CSS...\n\nProjects:\n- Project Name: Describe what you built, tech stack, and impact metrics...\n\nEducation:\n- School Name: Degree Details (Start Year - End Year)`}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
