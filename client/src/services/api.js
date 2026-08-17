@@ -214,6 +214,12 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ type, text })
       });
+    },
+    structurizeText(text) {
+      return request('/resume/ai-structurize', {
+        method: 'POST',
+        body: JSON.stringify({ text })
+      });
     }
   },
   

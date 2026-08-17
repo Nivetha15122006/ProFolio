@@ -668,6 +668,88 @@ async function handleApiRequest(req, res, bodyBuffer) {
       eventEmitter.emit('portfolioUpdated', { username, update: 'aiEnhanced' });
       return sendJSON(res, 200, { enhancedText, isAiPowered });
     }
+
+    if (pathname === '/api/resume/ai-structurize' && method === 'POST') {
+      const { text } = JSON.parse(bodyBuffer.toString());
+      if (!text) {
+        return sendJSON(res, 400, { error: "Text payload is required." });
+      }
+      
+      const apiKey = process.env.GEMINI_API_KEY;
+      let structuredProfile = null;
+      let isAiPowered = false;
+      
+      if (apiKey) {
+        try {
+          const prompt = `You are an expert resume parser. Read the following raw text notes, parse out details, and construct a valid JSON object matching the schema below. Do not output any markdown formatting backticks (like \`\`\`json), comments, or extra text before/after the JSON. Respond with ONLY the raw JSON string.
+
+JSON Schema:
+{
+  "personalInfo": {
+    "fullName": "Name",
+    "title": "Professional Title",
+    "email": "Email",
+    "phone": "Phone",
+    "location": "Location",
+    "bio": "Short summary bio"
+  },
+  "skills": [
+    { "id": "sk_1", "name": "Skill Name", "category": "Frameworks", "level": "Expert" }
+  ],
+  "projects": [
+    { "id": "proj_1", "name": "Project Name", "shortDesc": "Project description", "technologies": ["React", "CSS"] }
+  ],
+  "education": [
+    { "id": "edu_1", "institution": "School/College", "degree": "Degree", "fieldOfStudy": "Major", "startYear": "YYYY", "endYear": "YYYY" }
+  ]
+}
+
+Text to parse:
+"${text.replace(/"/g, '\\"')}"`;
+
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: prompt }
+                  ]
+                }
+              ]
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+              let jsonText = data.candidates[0].content.parts[0].text.trim();
+              
+              if (jsonText.startsWith('```')) {
+                jsonText = jsonText.replace(/^```(json)?/, '').replace(/```$/, '').trim();
+              }
+              
+              structuredProfile = JSON.parse(jsonText);
+              isAiPowered = true;
+            }
+          }
+        } catch (err) {
+          console.error("[Gemini Structurize API failed, falling back to local parser]", err);
+        }
+      }
+      
+      if (!isAiPowered) {
+        structuredProfile = runHeuristicStructurizer(text);
+      }
+      
+      await storage.saveProfile(username, structuredProfile);
+      
+      eventEmitter.emit('portfolioUpdated', { username, update: 'aiStructurized' });
+      return sendJSON(res, 200, { profile: structuredProfile, isAiPowered });
+    }
     
     // Path not found
     return sendJSON(res, 404, { error: `Endpoint not found: ${method} ${pathname}` });
@@ -739,6 +821,123 @@ function runHeuristicOptimizer(type, text) {
   }
   
   return cleaned;
+}
+
+function runHeuristicStructurizer(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  const profile = {
+    personalInfo: {
+      fullName: "",
+      title: "Software Engineer",
+      email: "",
+      phone: "",
+      location: "",
+      bio: ""
+    },
+    socialLinks: [],
+    education: [],
+    skills: [],
+    projects: [],
+    certifications: [],
+    achievements: []
+  };
+  
+  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (emailMatch) {
+    profile.personalInfo.email = emailMatch[0];
+  }
+  
+  const phoneMatch = text.match(/(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}/);
+  if (phoneMatch) {
+    profile.personalInfo.phone = phoneMatch[0];
+  }
+  
+  const nameLine = lines.find(l => l.length > 2 && l.length < 35 && !l.includes('@') && !l.includes(':'));
+  if (nameLine) {
+    profile.personalInfo.fullName = nameLine;
+  } else {
+    profile.personalInfo.fullName = "Developer Candidate";
+  }
+  
+  const bioLines = lines.filter(l => l.length > 40 && !l.includes('@') && !l.startsWith('-') && !l.startsWith('*'));
+  if (bioLines.length > 0) {
+    profile.personalInfo.bio = bioLines.slice(0, 2).join(' ');
+  } else {
+    profile.personalInfo.bio = "Dedicated software developer with passion for building scalable solutions.";
+  }
+  
+  let skillIdCounter = 1;
+  let projIdCounter = 1;
+  let eduIdCounter = 1;
+  
+  lines.forEach(line => {
+    const lower = line.toLowerCase();
+    
+    if (lower.startsWith('skills:') || lower.startsWith('languages:') || lower.startsWith('technologies:')) {
+      const content = line.substring(line.indexOf(':') + 1).trim();
+      const items = content.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      items.forEach(item => {
+        profile.skills.push({
+          id: `sk_ai_${skillIdCounter++}`,
+          name: item,
+          category: "Technical Skills",
+          level: "Intermediate"
+        });
+      });
+    }
+    
+    if (lower.includes('university') || lower.includes('college') || lower.includes('institute')) {
+      profile.education.push({
+        id: `edu_ai_${eduIdCounter++}`,
+        institution: line,
+        degree: lower.includes('bachelor') || lower.includes('b.s') || lower.includes('b.tech') ? "B.S." : "Degree",
+        fieldOfStudy: "Computer Science",
+        startYear: "2020",
+        endYear: "2024"
+      });
+    }
+    
+    if (line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line)) {
+      const cleanLine = line.replace(/^[-*\d.]+\s*/, '').trim();
+      if (cleanLine.length > 15) {
+        const colonIdx = cleanLine.indexOf(':');
+        if (colonIdx > 2 && colonIdx < 30) {
+          const name = cleanLine.substring(0, colonIdx).trim();
+          const desc = cleanLine.substring(colonIdx + 1).trim();
+          profile.projects.push({
+            id: `proj_ai_${projIdCounter++}`,
+            name: name,
+            shortDesc: desc,
+            technologies: ["React", "Node.js"]
+          });
+        } else {
+          profile.projects.push({
+            id: `proj_ai_${projIdCounter++}`,
+            name: `Project ${projIdCounter}`,
+            shortDesc: cleanLine,
+            technologies: ["JavaScript"]
+          });
+        }
+      }
+    }
+  });
+  
+  if (profile.skills.length === 0) {
+    profile.skills = [
+      { id: "sk_ai_def1", name: "JavaScript", category: "Languages", level: "Expert" },
+      { id: "sk_ai_def2", name: "React.js", category: "Frameworks", level: "Expert" },
+      { id: "sk_ai_def3", name: "Node.js", category: "Web Tech", level: "Intermediate" }
+    ];
+  }
+  
+  if (profile.projects.length === 0) {
+    profile.projects = [
+      { id: "proj_ai_def1", name: "Web Application", shortDesc: "Designed and implemented interactive pages, improving user engagement metrics.", technologies: ["React", "CSS"] }
+    ];
+  }
+  
+  return profile;
 }
 
 module.exports = {

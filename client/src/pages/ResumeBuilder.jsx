@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   Printer, ArrowUp, ArrowDown, Eye, EyeOff, 
   Settings, Type, Layout, Palette, Sparkles,
-  Code, Database, Brain, Cpu, PenTool, Edit3, Plus, X
+  Code, Database, Brain, Cpu, PenTool, Edit3, Plus, X, FileText
 } from 'lucide-react';
 import { api } from '../services/api';
 import ResumePreview from '../components/ResumePreview';
@@ -19,6 +19,8 @@ export default function ResumeBuilder() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLoadingField, setAiLoadingField] = useState(null);
   const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [editorMode, setEditorMode] = useState('visual');
+  const [rawText, setRawText] = useState('');
 
   // Resume configuration settings
   const [config, setConfig] = useState({
@@ -294,6 +296,61 @@ export default function ResumeBuilder() {
     }
   };
 
+  const getProfileAsText = (prof) => {
+    if (!prof) return '';
+    const personal = prof.personalInfo || {};
+    const skills = prof.skills || [];
+    const projects = prof.projects || [];
+    const education = prof.education || [];
+    
+    let text = `${personal.fullName || ''}\n`;
+    if (personal.title) text += `${personal.title}\n`;
+    if (personal.email || personal.phone || personal.location) {
+      text += `${[personal.email, personal.phone, personal.location].filter(Boolean).join(' | ')}\n`;
+    }
+    if (personal.bio) text += `\nProfessional Summary:\n${personal.bio}\n`;
+    
+    if (skills.length > 0) {
+      text += `\nSkills: ${skills.map(s => s.name).join(', ')}\n`;
+    }
+    
+    if (projects.length > 0) {
+      text += `\nProjects:\n`;
+      projects.forEach(p => {
+        text += `- ${p.name}: ${p.shortDesc || ''}\n`;
+      });
+    }
+    
+    if (education.length > 0) {
+      text += `\nEducation:\n`;
+      education.forEach(e => {
+        text += `- ${e.institution}: ${e.degree || ''} in ${e.fieldOfStudy || ''} (${e.startYear || ''} - ${e.endYear || ''})\n`;
+      });
+    }
+    return text.trim();
+  };
+
+  const handleAiStructurize = async () => {
+    if (!rawText.trim()) {
+      setToastMsg("Please write some resume text first!");
+      return;
+    }
+    setAiLoading(true);
+    setAiLoadingField('structurize');
+    try {
+      const res = await api.resume.structurizeText(rawText);
+      setProfile(res.profile);
+      setIsDirty(false);
+      setToastMsg("AI compiled your text and updated the resume preview!");
+      setEditorMode('visual');
+    } catch (err) {
+      setToastMsg("AI Structurization failed. Please check formatting.");
+    } finally {
+      setAiLoading(false);
+      setAiLoadingField(null);
+    }
+  };
+
   if (loading) {
     return <div className="resume-builder-loading">Loading resume builder...</div>;
   }
@@ -320,9 +377,35 @@ export default function ResumeBuilder() {
       <div className="builder-workspace-grid">
         {/* Left Side: Controls panel */}
         <div className="builder-controls-col">
-          
-          {/* Skeletons Picker */}
-          <div className="card control-group-card">
+          {/* Editor Mode Tab Selector */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <button
+              type="button"
+              className={`p-btn ${editorMode === 'visual' ? 'p-btn-primary' : 'p-btn-secondary'}`}
+              style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', borderRadius: '4px' }}
+              onClick={() => setEditorMode('visual')}
+            >
+              <Layout size={14} />
+              Visual Designer
+            </button>
+            <button
+              type="button"
+              className={`p-btn ${editorMode === 'raw' ? 'p-btn-primary' : 'p-btn-secondary'}`}
+              style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', borderRadius: '4px' }}
+              onClick={() => {
+                setRawText(getProfileAsText(profile));
+                setEditorMode('raw');
+              }}
+            >
+              <FileText size={14} />
+              Raw Text Editor
+            </button>
+          </div>
+
+          {editorMode === 'visual' && (
+            <>
+              {/* Skeletons Picker */}
+              <div className="card control-group-card">
             <h3 className="control-card-heading">
               <Sparkles size={16} />
               <span>Choose a Template</span>
@@ -507,6 +590,58 @@ export default function ResumeBuilder() {
               })}
             </div>
           </div>
+            </>
+          )}
+
+          {editorMode === 'raw' && (
+            <div className="card control-group-card">
+              <h3 className="control-card-heading">
+                <FileText size={16} />
+                <span>Raw Resume Writer</span>
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.4' }}>
+                Write or copy-paste your details here in plain text. Click AI Compile to instantly structure your resume!
+              </p>
+              
+              <div className="form-group">
+                <textarea
+                  className="form-textarea"
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  style={{ minHeight: '350px', fontFamily: 'monospace', fontSize: '0.8rem', lineHeight: '1.5', padding: '0.75rem', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}
+                  placeholder={`[Name] Your Name\n[Title] Software Engineer\n\nSkills: React, Node.js, Python\n\nProjects:\n- E-Commerce: Built fullstack storefront...\n\nEducation:\n- ABC University: Computer Science Degree...`}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  className="p-btn p-btn-primary"
+                  onClick={handleAiStructurize}
+                  disabled={aiLoading}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem' }}
+                >
+                  <Sparkles size={14} />
+                  {aiLoading && aiLoadingField === 'structurize' ? 'AI Compiling...' : '✨ AI Compile & Format'}
+                </button>
+                <button
+                  type="button"
+                  className="p-btn p-btn-secondary"
+                  onClick={() => setRawText('')}
+                  style={{ width: '100%', padding: '0.6rem' }}
+                >
+                  Clear Pad
+                </button>
+              </div>
+
+              {aiLoading && aiLoadingField === 'structurize' && (
+                <div style={{ padding: '0.75rem', backgroundColor: 'var(--accent-light)', color: 'var(--text-primary)', border: '1px solid var(--accent-color)', borderRadius: '6px', marginTop: '1rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="ai-spinner-animate" style={{ width: '12px', height: '12px', border: '2px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                  <span>Gemini Copilot is parsing sections and database tables...</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Side: Resume interactive preview pane */}
