@@ -136,9 +136,13 @@ npm run dev
 
 ### Step 3: Open in Browser
 Visit **[http://localhost:5173](http://localhost:5173)** to access the app.
-* **Test Profile Account**: Log in with Username: `arjun`, Password: `password123` to review seeded developer samples instantly, or register a new profile!
+* Click **Get Started** to register a new profile and start building your portfolio!
 
 ---
 
-## 👩‍💻 Author
-Developed as a production-grade AI-powered Full-Stack Web Application for placement portfolios and software engineering lab evaluations.
+## 👩‍💻 Built By
+
+**Nivetha G** — *M.Sc. AI & ML, Coimbatore Institute of Technology*
+
+* **GitHub**: [@Nivetha15122006](https://github.com/Nivetha15122006)
+* **Live Deployment**: [pro-folio-fawn.vercel.app](https://pro-folio-fawn.vercel.app)
