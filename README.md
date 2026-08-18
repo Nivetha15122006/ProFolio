@@ -1,4 +1,4 @@
-# DevPortfolio – Smart Portfolio & Resume Builder
+# Profolio – Smart Portfolio & Resume Builder
 
 > Build your professional identity once. Showcase it everywhere.
 
