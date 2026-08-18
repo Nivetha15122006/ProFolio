@@ -79,6 +79,7 @@ profolio/
 │   └── package.json
 ├── server/
 │   ├── data/                # Local JSON fallback backup files
+│   ├── models/              # MongoDB/Mongoose database schemas (User, Profile, Portfolio)
 │   ├── routes/              # Native HTTP API route handlers (api.js)
 │   ├── services/            # Storage connectivity engine (storageService.js)
 │   ├── utils/               # PDF extracting and multipart parsers
